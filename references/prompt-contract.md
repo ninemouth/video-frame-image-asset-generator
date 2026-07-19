@@ -7,14 +7,15 @@ Use this reference before writing final generation prompts, request packs, or th
 Write prompts in this order:
 
 1. **Source evidence:** frame ids, timestamps, and what each frame proves.
-2. **Asset role:** one role from `asset-taxonomy.md`.
-3. **Primary request:** the exact deliverable to generate.
-4. **Invariants:** subject identity policy, outfit/product geometry, prop placement, camera perspective, aspect ratio, lighting, environment.
-5. **Cleanup:** remove UI, captions, watermarks, logos, compression artifacts, black/white transition frames, duplicate ghosting, and mirrored text unless requested.
-6. **Background:** scene plate, pure white, light gray, chroma key, transparent-ready, or original environment.
-7. **Camera and composition:** angle, lens feeling, crop, padding, safe zones.
-8. **Negative constraints:** concrete failure modes to avoid.
-9. **QA checks:** what the agent must inspect after generation.
+2. **Visual evidence brief:** verified scene geometry, camera, light, persistent objects/surfaces, and transient removals.
+3. **Asset role:** one role from `asset-taxonomy.md`.
+4. **Primary request:** the exact deliverable to generate.
+5. **Invariants:** subject identity policy, outfit/product geometry, prop placement, camera perspective, aspect ratio, lighting, environment.
+6. **Cleanup:** remove UI, captions, watermarks, logos, compression artifacts, black/white transition frames, duplicate ghosting, and mirrored text unless requested.
+7. **Background:** scene plate, pure white, light gray, chroma key, transparent-ready, or original environment.
+8. **Camera and composition:** angle, lens feeling, crop, padding, safe zones.
+9. **Negative constraints:** concrete failure modes to avoid.
+10. **QA checks:** what the agent must inspect after generation.
 
 ## Template
 
@@ -22,6 +23,7 @@ Write prompts in this order:
 Use case: video-frame-recreation-asset
 Asset role: <role>
 Source evidence: <frame ids/timestamps and verified facts>
+Visual evidence brief: <scene geometry, camera, light, persistent surfaces, transient elements to remove>
 Primary request: <single image or sheet to generate>
 Subject/scene invariants: <what must remain consistent>
 Required cleanup: <what to remove>
@@ -44,6 +46,9 @@ For scene plates, state both what to preserve and what to remove:
 
 - Preserve: camera height, vanishing lines, road/floor geometry, lighting direction, time of day, color temperature, architectural rhythm.
 - Remove: people, platform UI, captions, watermarks, brand signage when not authorized, motion blur artifacts, black/white transition frames.
+- Avoid: generic ecommerce product shots, studio pack shots, explainer diagrams, arbitrary room redesign, decorative props not visible in evidence, and mismatched camera angles.
+
+If the visual evidence brief is missing, the prompt is a draft only and must not be sent to an image provider.
 
 ## Prop And Wardrobe Cutouts
 

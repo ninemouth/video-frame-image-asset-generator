@@ -13,6 +13,7 @@ const requiredFiles = [
   "package.json",
   "references/frame-source-contract.md",
   "references/asset-taxonomy.md",
+  "references/scene-stability-assets.md",
   "references/prompt-contract.md",
   "references/provider-routing.md",
   "scripts/configure-image-provider.mjs",
@@ -46,8 +47,13 @@ async function main() {
   if (!skill.startsWith("---\nname: video-frame-image-asset-generator\n")) {
     fail("SKILL.md frontmatter name is invalid");
   }
-  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json"]) {
+  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md"]) {
     if (!skill.includes(term)) fail(`SKILL.md missing required term: ${term}`);
+  }
+
+  const planner = await readFile(path.join(root, "scripts", "plan-image-assets.mjs"), "utf8");
+  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "request_pack_only"]) {
+    if (!planner.includes(term)) fail(`plan-image-assets.mjs missing stability guard: ${term}`);
   }
 
   const provider = await readFile(path.join(root, "references", "provider-routing.md"), "utf8");

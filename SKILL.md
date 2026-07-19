@@ -25,13 +25,14 @@ Keep the two responsibilities separate:
      --source-run /abs/ffmpeg-run \
      --slug sg01-clean-assets
    ```
-3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, prop, environment, UI, or action facts.
+3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, prop, environment, UI, or action facts. For video recreation, write a visual evidence brief before provider generation; read `references/scene-stability-assets.md` when the goal is stable empty scene plates.
 4. Plan the target asset matrix:
    ```bash
    node ${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator/scripts/plan-image-assets.mjs \
      --run-dir /abs/asset-run \
      --source-run /abs/ffmpeg-run \
-     --language zh
+     --language zh \
+     --visual-brief /abs/visual-evidence-brief.md
    ```
 5. Resolve provider before execution:
    ```bash
@@ -46,7 +47,8 @@ Keep the two responsibilities separate:
    ```
 6. Generate assets:
    - For `native_codex`, load and use the system `imagegen` skill. Use built-in image generation by default, especially when reference images or edit semantics matter.
-   - For `third_party_api`, use `scripts/third-party-image-runtime.mjs` for text-to-image prompts and request packs. Do not claim reference-image editing unless the configured provider is known to support that exact endpoint.
+- For `third_party_api`, use `scripts/third-party-image-runtime.mjs` for text-to-image prompts and request packs. Do not claim reference-image editing unless the configured provider is known to support that exact endpoint.
+   - If `visual_evidence_brief` is missing, do not send request-pack entries to any image provider. Fill the visual facts first, then rerun planning.
    - For blocked or review-first work, deliver `output/prompt-pack.md` and `output/request-pack.jsonl`.
 7. QA and deliver:
    - Save final images under the run-local `generated-assets/` or `final-assets/`.
@@ -57,7 +59,9 @@ Keep the two responsibilities separate:
 
 Default roles are:
 
-- `clean_scene_plate`: same location without people, UI, captions, watermarks, or transient clutter.
+- `clean_scene_plate`: same location without people, UI, captions, watermarks, products, hands, or transient clutter unless a product is explicitly required as an anchor.
+- `camera_angle_plate_set`: multiple empty plates matching the timeline's main camera positions, used to stabilize segment-to-segment video generation.
+- `surface_interaction_plate`: clean close-up surface/interaction area for later hands, products, props, or motion.
 - `ui_free_scene_reconstruction`: same shot feeling but clean, brand-free, platform-UI-free.
 - `character_turnaround`: same designed character or user-authorized subject, front/side/back/three-quarter on plain light background.
 - `wardrobe_detail`: clothing/accessory material, silhouette, closures, texture, and layered details.
@@ -68,12 +72,14 @@ Default roles are:
 - `negative_control`: examples and prompt negatives that prevent identity drift, mirrored text, floating props, brand logos, extra limbs, wrong aspect ratio, and low-information frames.
 
 Read `references/asset-taxonomy.md` when role choice matters or the user asks for a full asset pack.
+Read `references/scene-stability-assets.md` when the user complains about unstable video recreation, generic image outputs, or asks for empty scene plates.
 
 ## Prompt Contract
 
 Write every prompt as a production brief, not a generic caption. Include:
 
 - Source evidence: frame ids/timestamps and what each frame proves.
+- Visual evidence brief: verified scene geometry, camera, light, persistent surfaces, transient elements to remove, and source-grounded placement zones.
 - Target asset role and final use.
 - Subject/scene invariants: identity policy, clothing, props, environment, perspective, lighting, aspect ratio.
 - Required cleanup: remove UI overlays, watermarks, captions, brands, compression artifacts, black/white transition frames, and mirrored text unless explicitly requested.
@@ -115,5 +121,6 @@ Third-party runtime environment variables:
 - `scripts/sync-to-codex-skill.mjs`: sync a development copy into `${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator`.
 - `references/frame-source-contract.md`: expected source inputs and frame-index mapping.
 - `references/asset-taxonomy.md`: asset role definitions and default shot matrix.
+- `references/scene-stability-assets.md`: stability-first scene plate rules for improving video recreation consistency.
 - `references/prompt-contract.md`: prompt schema, evidence locks, negatives, and QA rules.
 - `references/provider-routing.md`: native and third-party execution boundaries.

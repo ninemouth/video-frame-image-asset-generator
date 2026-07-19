@@ -155,6 +155,17 @@ async function main() {
   const requests = await loadRequests(args);
   const results = [];
   for (const request of requests) {
+    if (request.ready_for_generation === false && !args["allow-draft"]) {
+      const skipped = {
+        id: request.id,
+        status: "skipped",
+        reason: "ready_for_generation_false",
+        next_action: "Fill visual_evidence_brief, rerun plan-image-assets, then generate."
+      };
+      results.push(skipped);
+      console.log(JSON.stringify(skipped));
+      continue;
+    }
     const result = await generateOne({
       prompt: request.prompt,
       id: request.id,
