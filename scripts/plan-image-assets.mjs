@@ -77,6 +77,7 @@ function buildTargets(frames, language, options = {}) {
   const zh = language === "zh";
   const visualBrief = String(options.visualBrief || "").trim();
   const hasVisualBrief = Boolean(visualBrief);
+  const hasHumanSubject = detectHumanSubject(visualBrief);
   const grounding = hasVisualBrief
     ? (zh ? `已核验视觉事实：${visualBrief}` : `Verified visual facts: ${visualBrief}`)
     : (zh
@@ -89,8 +90,11 @@ function buildTargets(frames, language, options = {}) {
   const stabilityNegative = zh
     ? "不要生成泛化商品图、摄影棚产品图、电商解释图、任意卧室模板、无来源的鲜花/台灯/新家具、额外人物、额外 Logo 或与证据机位不一致的构图。"
     : "Do not generate generic product photos, studio ecommerce plates, explainer graphics, arbitrary bedroom templates, unsourced flowers/lamps/new furniture, extra people, extra logos, or a composition that does not match the evidence camera.";
+  const modelNegative = zh
+    ? "不要美颜成广告棚拍模特，不要换脸成名人，不要改变年龄段/发型类别/服装类别/姿态逻辑，不要额外肢体、畸形手指、浮空身体、过度性感化、平台 UI、字幕、水印或品牌 Logo。"
+    : "Do not turn the subject into a generic studio fashion model, do not use a celebrity face, do not change age range, hairstyle category, clothing category, or pose logic, no extra limbs, malformed fingers, floating body, over-sexualization, platform UI, captions, watermarks, or brand logos.";
 
-  return [
+  const targets = [
     {
       id: "stability-master-scene-plate-001",
       role: "clean_scene_plate",
@@ -135,6 +139,7 @@ function buildTargets(frames, language, options = {}) {
         ? `复刻证据帧 ${evidence} 的画面氛围，但交付为无平台界面、无字幕、无水印的干净画面。${grounding} 保持主体/产品原本应处的位置关系、机位、室内或街景关系、色温和构图；不要把它变成广告棚拍或新场景。${stabilityNegative}`
         : `Recreate the visual feeling of evidence frames ${evidence} without platform UI, captions, or watermarks. ${grounding} Preserve original subject/product placement relationships, camera angle, environment relationship, color temperature, and composition; do not turn it into a studio ad or new scene. ${stabilityNegative}`
     },
+    ...humanSubjectTargets({ evidence, zh, grounding, hasVisualBrief, requestMode, modelNegative, enabled: hasHumanSubject }),
     {
       id: "character-turnaround-001",
       role: "character_turnaround",
@@ -189,6 +194,51 @@ function buildTargets(frames, language, options = {}) {
       prompt: zh
         ? `生成干净的转场视觉参考，表达证据帧 ${evidence} 中的径向模糊、快速拉近拉远、运动拖影或同轴变焦感。不要黑场/白场占满画面，不要平台 UI，不要破坏中心构图。`
         : `Generate a clean transition reference expressing radial blur, snap zoom, motion streak, or axial push-pull from frames ${evidence}. Avoid full black/white frames, no UI, preserve centered composition.`
+    }
+  ];
+  return targets;
+}
+
+function detectHumanSubject(text) {
+  if (!text) return false;
+  return /模特|人物|女性|男性|女人|男人|女孩|男孩|真人|人像|手部|woman|man|female|male|model|person|people|subject|hand/i.test(text);
+}
+
+function humanSubjectTargets({ evidence, zh, grounding, hasVisualBrief, requestMode, modelNegative, enabled }) {
+  if (!enabled) return [];
+  return [
+    {
+      id: "clean-model-in-scene-001",
+      role: "clean_model_scene_reference",
+      title: zh ? "场景内干净模特照" : "Clean in-scene model reference",
+      source_evidence: evidence,
+      ready_for_generation: hasVisualBrief,
+      provider_mode: requestMode,
+      prompt: zh
+        ? `基于证据帧 ${evidence} 生成“场景内干净模特照”，用于视频复刻稳定人物位置、姿态和镜头关系。${grounding} 保留模特在原视频中的年龄段、发型类别、服装类别、躺卧/坐起/操作产品等姿态逻辑、与床面/窗户/产品的空间关系、自然光方向和画幅比例。移除平台 UI、中文字幕、水印、未经授权产品 Logo 和压缩噪点；不要移除模特。背景必须仍是证据场景，不要换成摄影棚或新卧室。${modelNegative}`
+        : `Generate a clean in-scene model reference from evidence frames ${evidence}, used to stabilize person placement, pose, and camera relationship for video recreation. ${grounding} Preserve age range, hairstyle category, clothing category, lying/sitting/product-interaction pose logic, spatial relationship to the scene, natural light direction, and aspect ratio. Remove UI, captions, watermarks, unauthorized product logos, and compression noise; do not remove the model. Keep the evidence scene, not a studio or new room. ${modelNegative}`
+    },
+    {
+      id: "clean-model-plain-background-001",
+      role: "clean_model_plain_background",
+      title: zh ? "纯色背景干净模特照" : "Clean model on plain background",
+      source_evidence: evidence,
+      ready_for_generation: hasVisualBrief,
+      provider_mode: requestMode,
+      prompt: zh
+        ? `基于证据帧 ${evidence} 生成“纯色背景干净模特照”，用于后续替换、组合或视频人物参考。${grounding} 模特保持源视频已确认的年龄段、发型类别、服装类别、身形比例和核心姿态气质，但作为非身份锁定的普通商业模特参考；背景为纯白或浅灰，无家具、无床、无产品、无字幕、无水印。输出完整身体或半身取决于源帧证据，不要裁掉关键手臂、肩颈或头发。${modelNegative}`
+        : `Generate a clean model reference on a plain background from evidence frames ${evidence}, for later replacement, compositing, or video person reference. ${grounding} Preserve confirmed age range, hairstyle category, clothing category, body proportion, and core pose feeling, but treat it as a non-identity-locked ordinary commercial model reference. Plain white or light gray background, no furniture, bed, product, captions, or watermarks. Full-body or half-body should follow source evidence; do not crop key arms, shoulders, neck, or hair. ${modelNegative}`
+    },
+    {
+      id: "clean-model-pose-pack-001",
+      role: "clean_model_pose_pack",
+      title: zh ? "干净模特姿态组" : "Clean model pose pack",
+      source_evidence: evidence,
+      ready_for_generation: hasVisualBrief,
+      provider_mode: requestMode,
+      prompt: zh
+        ? `基于证据帧 ${evidence} 生成 3-5 张“干净模特姿态组”，覆盖原视频中的主要人物动作节点：躺卧休息、侧卧/转头、手部触碰产品、坐起或整理产品、近景面部/肩颈。${grounding} 每张都保持同一非身份锁定模特设计、同一服装类别和自然日光；背景可用源场景干净版或纯浅色背景，但不能混入平台 UI、字幕、水印或无来源新道具。${modelNegative}`
+        : `Generate a 3-5 image clean model pose pack from evidence frames ${evidence}, covering the main person-action beats: lying/resting, side pose or head turn, hand touching product, sitting up or arranging product, and face/shoulder close-up. ${grounding} Keep the same non-identity-locked model design, clothing category, and natural light across images. Background can be clean source scene or plain light background, with no UI, captions, watermarks, or unsourced new props. ${modelNegative}`
     }
   ];
 }

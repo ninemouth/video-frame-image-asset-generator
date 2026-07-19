@@ -14,7 +14,8 @@ For recreation work, generate or prepare assets in this order:
 2. `camera_angle_plate_set`: 3-4 empty plates for the main camera positions used in the timeline.
 3. `surface_interaction_plate`: clean close/detail area where hands, props, or product interactions happen.
 4. `ui_free_scene_reconstruction`: same composition with intended subject/product but no platform UI.
-5. Character, prop, wardrobe, pose, and transition assets.
+5. If a model/person appears in the source: `clean_model_scene_reference`, `clean_model_plain_background`, and `clean_model_pose_pack`.
+6. Character, prop, wardrobe, pose, and transition assets.
 
 Do not start with product pack shots, lifestyle ads, explainers, or generic studio renders unless the user explicitly asks for ecommerce images.
 
@@ -30,11 +31,12 @@ Before provider generation, write a compact visual evidence brief. It must name 
 - persistent props or furniture
 - transient elements to remove
 - product/person placement zones, if later compositing needs them
+- whether a model/person appears, plus age range, hairstyle category, clothing category, body crop, pose beats, and interaction with scene/product
 
 Example:
 
 ```text
-Vertical 9:16 bedroom video. Camera is above and slightly diagonal to a white quilted bed near tall bright windows. Cream curtains and green outdoor foliage stay visible through the windows. White pillows and folded white bedding occupy the lower/middle frame. Soft daylight enters from the window side; overall palette is warm white and pale green. Remove woman, hands, Chinese captions, platform UI, and red product labels unless specifically needed.
+Vertical 9:16 bedroom video. Camera is above and slightly diagonal to a white quilted bed near tall bright windows. Cream curtains and green outdoor foliage stay visible through the windows. White pillows and folded white bedding occupy the lower/middle frame. Soft daylight enters from the window side; overall palette is warm white and pale green. Woman model appears in white camisole/sleepwear, lying and sitting on bed, touching or arranging the white pillow product; use non-identity-locked ordinary commercial model references. Remove Chinese captions, platform UI, and red product labels unless specifically needed.
 ```
 
 ## Prompt Requirements
@@ -48,3 +50,13 @@ Every stability plate prompt must say:
 - avoid generic ecommerce, studio product, lifestyle ad, or arbitrary room redesign
 
 If these details are missing, mark the request pack as `ready_for_generation: false`.
+
+## Model Assets
+
+Do not confuse empty scene plates with complete recreation support. When the source video has a model, the pack is incomplete unless it also includes clean model assets:
+
+- `clean_model_scene_reference`: model remains in the source scene, UI/captions/watermarks removed.
+- `clean_model_plain_background`: model isolated on white/light gray for replacement or compositing.
+- `clean_model_pose_pack`: several source-grounded pose/action beats from the video timeline.
+
+These must preserve clothing category, hairstyle category, pose logic, camera crop, and scene interaction while avoiding biometric identity claims unless the user has explicitly authorized identity preservation.

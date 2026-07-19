@@ -25,7 +25,7 @@ Keep the two responsibilities separate:
      --source-run /abs/ffmpeg-run \
      --slug sg01-clean-assets
    ```
-3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, prop, environment, UI, or action facts. For video recreation, write a visual evidence brief before provider generation; read `references/scene-stability-assets.md` when the goal is stable empty scene plates.
+3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, prop, environment, UI, or action facts. For video recreation, write a visual evidence brief before provider generation; read `references/scene-stability-assets.md` when the goal is stable empty scene plates. If a model/person appears in the source, the pack must include clean model references, not only empty scenes and product assets.
 4. Plan the target asset matrix:
    ```bash
    node ${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator/scripts/plan-image-assets.mjs \
@@ -63,6 +63,9 @@ Default roles are:
 - `camera_angle_plate_set`: multiple empty plates matching the timeline's main camera positions, used to stabilize segment-to-segment video generation.
 - `surface_interaction_plate`: clean close-up surface/interaction area for later hands, products, props, or motion.
 - `ui_free_scene_reconstruction`: same shot feeling but clean, brand-free, platform-UI-free.
+- `clean_model_scene_reference`: source-grounded clean model photo inside the cleaned original scene.
+- `clean_model_plain_background`: clean non-identity-locked model/person photo on white or light gray background.
+- `clean_model_pose_pack`: 3-5 clean source-grounded model pose/action references from the video timeline.
 - `character_turnaround`: same designed character or user-authorized subject, front/side/back/three-quarter on plain light background.
 - `wardrobe_detail`: clothing/accessory material, silhouette, closures, texture, and layered details.
 - `prop_cutout`: bag, shoe, tool, furniture, handheld item, vehicle detail, or other isolated prop.

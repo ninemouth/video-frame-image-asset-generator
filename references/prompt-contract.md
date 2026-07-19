@@ -50,6 +50,16 @@ For scene plates, state both what to preserve and what to remove:
 
 If the visual evidence brief is missing, the prompt is a draft only and must not be sent to an image provider.
 
+## Model References
+
+When the source includes a model/person, include model prompts before product/prop prompts:
+
+- `clean_model_scene_reference`: keep the model in the original cleaned scene.
+- `clean_model_plain_background`: isolate a non-identity-locked ordinary model reference on white/light gray.
+- `clean_model_pose_pack`: cover the main source pose/action beats.
+
+Model prompts must preserve visible source-grounded facts such as age range, hairstyle category, clothing category, body crop, pose logic, camera angle, and interaction with the scene/product. They must remove UI, captions, watermarks, unauthorized logos, and compression artifacts. Do not claim exact identity preservation unless the user explicitly confirms rights and intent.
+
 ## Prop And Wardrobe Cutouts
 
 For isolated props:

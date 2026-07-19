@@ -52,7 +52,7 @@ async function main() {
   }
 
   const planner = await readFile(path.join(root, "scripts", "plan-image-assets.mjs"), "utf8");
-  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "request_pack_only"]) {
+  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only"]) {
     if (!planner.includes(term)) fail(`plan-image-assets.mjs missing stability guard: ${term}`);
   }
 
