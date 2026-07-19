@@ -1,0 +1,22 @@
+{
+  "name": "video-frame-image-asset-generator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninemouth/video-frame-image-asset-generator.git"
+  },
+  "scripts": {
+    "configure:image-provider": "node scripts/configure-image-provider.mjs",
+    "create-run": "node scripts/create-asset-run.mjs",
+    "plan": "node scripts/plan-image-assets.mjs",
+    "resolve-provider": "node scripts/resolve-image-provider.mjs",
+    "third-party:generate": "node scripts/third-party-image-runtime.mjs",
+    "sync": "node scripts/sync-to-codex-skill.mjs --source .",
+    "verify": "node scripts/verify-skill.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

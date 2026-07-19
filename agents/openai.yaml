@@ -1,0 +1,6 @@
+interface:
+  display_name: "Video Frame Image Assets"
+  short_description: "从视频抽帧规划并生成复刻图片资产包"
+  default_prompt: "Use $video-frame-image-asset-generator to turn this FFmpeg recreation run into clean scene, character, prop, and prompt assets."
+policy:
+  allow_implicit_invocation: true
