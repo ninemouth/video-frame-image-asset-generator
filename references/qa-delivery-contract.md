@@ -66,3 +66,11 @@ Use `--inspect-images` on final passes when the generated files are already pres
 Use `--require-final` only when the task must prove at least one image is ready for video-model input.
 
 Use `--write-report` when handing the result to a user or operator. It writes `qa/asset-validation-report.md` with blocking issues, warnings, status counts, and recommended next actions.
+
+Before handoff, run:
+
+```bash
+node scripts/organize-final-assets.mjs --run-dir /abs/asset-run --clean
+```
+
+This splits direct-access files into `final-assets/ready/`, `final-assets/reference-only/`, `final-assets/fallback-review/`, `final-assets/retry-required/`, and `final-assets/failed-role/` so users do not accidentally treat review or fallback assets as video-ready.

@@ -19,6 +19,7 @@ const requiredFiles = [
   "references/provider-routing.md",
   "scripts/configure-image-provider.mjs",
   "scripts/create-asset-run.mjs",
+  "scripts/organize-final-assets.mjs",
   "scripts/plan-image-assets.mjs",
   "scripts/resolve-image-provider.mjs",
   "scripts/third-party-image-runtime.mjs",
@@ -68,6 +69,11 @@ async function main() {
     if (!thirdPartyRuntime.includes(term)) fail(`third-party-image-runtime.mjs missing manifest update behavior: ${term}`);
   }
 
+  const finalAssetsOrganizer = await readFile(path.join(root, "scripts", "organize-final-assets.mjs"), "utf8");
+  for (const term of ["ready_for_video_model", "reference-only", "fallback-review", "retry-required", "failed-role", "final-assets-index.json"]) {
+    if (!finalAssetsOrganizer.includes(term)) fail(`organize-final-assets.mjs missing final asset directory behavior: ${term}`);
+  }
+
   const provider = await readFile(path.join(root, "references", "provider-routing.md"), "utf8");
   for (const term of ["VIDEO_IMAGE_PROVIDER_API_KEY", "THINKAI_API_KEY", "CHARLIE_KEY", "/images/generations", "image-provider.json", "pending_visual_review"]) {
     if (!provider.includes(term)) fail(`provider routing missing required term: ${term}`);
@@ -84,6 +90,9 @@ async function main() {
   }
   if (!pkg.scripts?.["configure:image-provider"]) {
     fail("package.json missing configure:image-provider script");
+  }
+  if (!pkg.scripts?.["organize:final-assets"]) {
+    fail("package.json missing organize:final-assets script");
   }
   if (!pkg.scripts?.["validate:manifest"]) {
     fail("package.json missing validate:manifest script");
