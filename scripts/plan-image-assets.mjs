@@ -72,6 +72,157 @@ function evidenceLine(frames) {
     .join(", ");
 }
 
+const VIDEO_READY_STATUS = "planned_needs_generation";
+
+function roleAcceptance(role, zh) {
+  const common = zh
+    ? [
+        "内容必须能被追溯到已视觉核验的源帧事实。",
+        "不得包含平台 UI、字幕、水印、未授权品牌标识、黑场/白场转场残影或镜像文字。",
+        "若输出来自本地裁切、遮罩或旧结果复用，必须标记为 fallback_review_required 或 reference_only，不能标记 ready_for_video_model。"
+      ]
+    : [
+        "Content must be traceable to visually verified source-frame facts.",
+        "No platform UI, captions, watermarks, unauthorized brand marks, black/white transition artifacts, or mirrored text.",
+        "If the output is a local crop, mask, or reused older result, mark it fallback_review_required or reference_only, never ready_for_video_model."
+      ];
+
+  const rules = {
+    clean_scene_plate: zh
+      ? [
+          "必须是完整空场景，移除人物、手部、临时产品和可移动杂物，除非产品被明确指定为环境锚点。",
+          "窗/床/地面/墙面/道路等永久几何、机位高度、透视线、光线方向和色温必须贴近源视频。",
+          "不得生成泛化样板间、电商棚拍、无来源家具或任意重新设计的房间/街景。"
+        ]
+      : [
+          "Must be a full clean empty scene, removing people, hands, transient products, and movable clutter unless the product is explicitly an environment anchor.",
+          "Permanent geometry, camera height, perspective lines, light direction, and color temperature must stay close to the source video.",
+          "Do not generate generic showrooms, ecommerce studios, unsourced furniture, or arbitrary room/street redesigns."
+        ],
+    camera_angle_plate_set: zh
+      ? [
+          "必须覆盖时间线主要机位，并保持同一空间连续性。",
+          "每个机位都需要对应源视频动作段：开场、主动作、近景/细节、产品或道具操作区。",
+          "不接受只生成一张通用漂亮场景图。"
+        ]
+      : [
+          "Must cover the timeline's main camera positions while preserving one continuous space.",
+          "Each angle needs a source timeline purpose: opening, main action, close/detail, product or prop operation zone.",
+          "A single generic attractive scene is not acceptable."
+        ],
+    surface_interaction_plate: zh
+      ? [
+          "必须保留源视频中的承载面材质、褶皱方向、边缘透视、局部光影和接触阴影逻辑。",
+          "不得出现手、人、字幕、水印或无来源新道具。",
+          "应为后续放置产品、手部或局部动作留出清晰区域。"
+        ]
+      : [
+          "Must preserve source surface material, wrinkle direction, edge perspective, local light, and contact-shadow logic.",
+          "No hands, people, captions, watermarks, or unsourced new props.",
+          "Must leave a clear zone for later product, hand, or local-action placement."
+        ],
+    ui_free_scene_reconstruction: zh
+      ? [
+          "必须保持源视频主体/产品的构图位置和场景关系，只移除 UI、字幕、水印和未授权标识。",
+          "不得把画面改造成棚拍、商品详情页或新的场景。"
+        ]
+      : [
+          "Must preserve the source subject/product composition and scene relationship while removing UI, captions, watermarks, and unauthorized marks.",
+          "Do not turn the frame into a studio shot, product detail page, or new scene."
+        ],
+    clean_model_scene_reference: zh
+      ? [
+          "模特必须保留在源场景干净版中，用于锁定人物位置、姿态和镜头关系。",
+          "保留年龄段、发型类别、服装类别、身形比例、动作逻辑和与产品/场景的互动。",
+          "不得换成摄影棚或无来源新卧室；不得声称保留真人身份，除非用户明确授权。"
+        ]
+      : [
+          "The model must remain in the cleaned source scene to lock person placement, pose, and camera relationship.",
+          "Preserve age range, hairstyle category, clothing category, body proportion, action logic, and interaction with product/scene.",
+          "Do not switch to a studio or unsourced new room; do not claim real identity preservation unless explicitly authorized."
+        ],
+    clean_model_plain_background: zh
+      ? [
+          "背景必须是真正纯白或浅灰，不得出现床、窗、家具、产品、场景残影、字幕或水印。",
+          "人物为非身份锁定商业模特参考，只保留源视频可见的发型类别、服装类别、身形比例和姿态气质。",
+          "不得裁掉关键头发、肩颈、手臂或服装结构；不合格时必须标记 failed_role 或 retry_required。"
+        ]
+      : [
+          "Background must be truly plain white or light gray, with no bed, window, furniture, product, scene residue, captions, or watermarks.",
+          "The person is a non-identity-locked commercial model reference, preserving only source-visible hairstyle category, clothing category, body proportion, and pose feeling.",
+          "Do not crop key hair, shoulders, neck, arms, or clothing structure; mark failed_role or retry_required if this is not met."
+        ],
+    clean_model_pose_pack: zh
+      ? [
+          "必须覆盖源时间线 3-5 个主要姿态/动作节点。",
+          "除总览 sheet 外，正式交付还必须有每个姿态的独立单图；拼贴图不能作为唯一可用资产。",
+          "不得有白块遮罩、Logo 残留、身份漂移、服装漂移、手部畸形或裁切混乱。"
+        ]
+      : [
+          "Must cover 3-5 main source timeline pose/action beats.",
+          "Final delivery must include individual files for each pose in addition to any overview sheet; a collage cannot be the only usable asset.",
+          "No white mask artifacts, logo remnants, identity drift, wardrobe drift, malformed hands, or chaotic crops."
+        ],
+    wardrobe_detail: zh
+      ? [
+          "必须主要展示服装/鞋/配饰的材质、结构、边缘、肩带/扣件/褶皱/纹理等细节。",
+          "不得只是人物上半身、人脸裁切或低信息截图。",
+          "纯色或微距背景，细节清晰，不得出现无来源 Logo。"
+        ]
+      : [
+          "Must primarily show clothing/shoe/accessory material, construction, edges, straps/closures/wrinkles/textures, or other details.",
+          "Must not be merely an upper-body crop, face crop, or low-information screenshot.",
+          "Plain or macro background, crisp details, no unsourced logos."
+        ],
+    prop_cutout: zh
+      ? [
+          "物体必须完整入画，纯白/浅灰或透明准备背景，足够留白。",
+          "比例、轮廓、带子/链条/鞋底/家具边缘等结构必须连续，不得漂浮或断裂。"
+        ]
+      : [
+          "Object must be fully in frame on pure white/light gray or transparent-ready background with generous padding.",
+          "Proportions, silhouette, straps/chains/soles/furniture edges must be continuous, not floating or broken."
+        ],
+    pose_reference_pack: zh
+      ? [
+          "姿态必须对应源视频关键动作，而不是泛化摆拍。",
+          "优先输出独立姿态图；若输出 sheet，也必须无遮罩块、无 UI、无文字。"
+        ]
+      : [
+          "Poses must map to source key actions, not generic posing.",
+          "Prefer individual pose files; if a sheet is produced, it must have no mask blocks, UI, or text."
+        ],
+    transition_reference: zh
+      ? [
+          "只表达源视频转场语言，如径向模糊、同轴拉近拉远、运动拖影。",
+          "不得交付黑场/白场占满画面的低信息帧。"
+        ]
+      : [
+          "Express only the source transition language, such as radial blur, axial zoom, or motion streaks.",
+          "Do not deliver low-information full black/white frames."
+        ],
+    character_turnaround: zh
+      ? [
+          "必须是同一非身份锁定人物设计的正/侧/背/四分之三视角。",
+          "纯色背景，服装、发型和配饰一致。"
+        ]
+      : [
+          "Must be one non-identity-locked character design across front/side/back/three-quarter views.",
+          "Plain background with consistent outfit, hairstyle, and accessories."
+        ]
+  };
+
+  return [...common, ...(rules[role] || [])];
+}
+
+function addTargetContract(target, zh) {
+  return {
+    ...target,
+    delivery_status: VIDEO_READY_STATUS,
+    acceptance: roleAcceptance(target.role, zh)
+  };
+}
+
 function buildTargets(frames, language, options = {}) {
   const evidence = evidenceLine(pickFrames(frames, 5));
   const zh = language === "zh";
@@ -196,7 +347,7 @@ function buildTargets(frames, language, options = {}) {
         : `Generate a clean transition reference expressing radial blur, snap zoom, motion streak, or axial push-pull from frames ${evidence}. Avoid full black/white frames, no UI, preserve centered composition.`
     }
   ];
-  return targets;
+  return targets.map((target) => addTargetContract(target, zh));
 }
 
 function detectHumanSubject(text) {
@@ -337,10 +488,19 @@ async function main() {
       role: target.role,
       title: target.title,
       status: "planned",
+      delivery_status: target.delivery_status,
+      allowed_final_statuses: [
+        "ready_for_video_model",
+        "reference_only",
+        "fallback_review_required",
+        "retry_required",
+        "failed_role"
+      ],
       output_path: null,
       provider: null,
       qa_status: "pending",
-      ready_for_generation: target.ready_for_generation
+      ready_for_generation: target.ready_for_generation,
+      acceptance: target.acceptance
     }))
   };
 
@@ -353,7 +513,9 @@ async function main() {
       quality: args.quality || "auto",
       provider_mode: target.provider_mode || "auto",
       ready_for_generation: target.ready_for_generation,
-      requires_visual_evidence_brief: !target.ready_for_generation
+      requires_visual_evidence_brief: !target.ready_for_generation,
+      delivery_status: target.delivery_status,
+      acceptance: target.acceptance
     }))
     .join("\n");
 
@@ -366,17 +528,28 @@ async function main() {
     `${JSON.stringify({
       schema: "video-frame-image-asset-generator/asset-qa-checklist/v1",
       run_id: plan.run_id,
+      final_statuses: {
+        ready_for_video_model: "Generated or edited asset passed role-specific visual QA and can be used as a video-model reference.",
+        reference_only: "Useful evidence or operator reference, but not strong enough to control video generation.",
+        fallback_review_required: "Local crop, mask, reused asset, or provider-blocked substitute; must not be treated as final video-model input without review.",
+        retry_required: "Prompt target is valid but generation failed or result needs rerun.",
+        failed_role: "Image content does not match its declared role."
+      },
       checks: [
-        "source evidence visually inspected",
-        "visual_evidence_brief filled before provider generation",
-        "scene stability plates generated before character/product assets",
-        "UI/captions/watermarks removed unless requested",
-        "identity policy respected",
-        "props and wardrobe do not drift",
-        "scene geometry and camera perspective preserved",
-        "black/white transition artifacts avoided",
-        "final files copied into run-local generated-assets or final-assets"
-      ]
+        { id: "source_evidence_visually_inspected", status: "pending" },
+        { id: "visual_evidence_brief_filled_before_provider_generation", status: visualBrief ? "passed" : "blocked" },
+        { id: "scene_stability_plates_generated_before_character_product_assets", status: "pending" },
+        { id: "ui_captions_watermarks_removed_unless_requested", status: "pending" },
+        { id: "identity_policy_respected", status: "pending" },
+        { id: "plain_background_must_be_plain", applies_to: ["clean_model_plain_background"], status: "pending" },
+        { id: "pose_pack_individual_files_required", applies_to: ["clean_model_pose_pack", "pose_reference_pack"], status: "pending" },
+        { id: "wardrobe_detail_must_show_material_not_face_crop", applies_to: ["wardrobe_detail"], status: "pending" },
+        { id: "scene_plate_source_geometry_score", applies_to: ["clean_scene_plate", "camera_angle_plate_set"], status: "pending" },
+        { id: "fallback_cannot_be_final_pass", status: "pending" },
+        { id: "black_white_transition_artifacts_avoided", status: "pending" },
+        { id: "final_files_copied_into_run_local_final_assets", status: "pending" }
+      ],
+      role_acceptance: Object.fromEntries(plan.targets.map((target) => [target.id, target.acceptance]))
     }, null, 2)}\n`
   );
 
@@ -397,6 +570,14 @@ async function main() {
       "- `output/request-pack.jsonl`",
       "- `planning/asset-generation-plan.json`",
       "- `qa/asset-qa-checklist.json`",
+      "",
+      "Delivery status contract:",
+      "",
+      "- `ready_for_video_model`: passed role-specific visual QA.",
+      "- `reference_only`: useful for human/operator reference but not a strong video-model control image.",
+      "- `fallback_review_required`: local crop, mask, reused image, or provider-blocked substitute; review before use.",
+      "- `retry_required`: prompt is valid but generation failed or should be rerun.",
+      "- `failed_role`: image content does not match the declared role.",
       ""
     ].join("\n")
   );

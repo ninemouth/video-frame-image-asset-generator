@@ -31,6 +31,11 @@ Use this reference when choosing what image assets to generate from frame eviden
 - For character packs, prefer one consistent fictionalized design unless the user explicitly authorizes preserving a real person.
 - For props and wardrobe, isolate on pure background with generous padding; use chroma key only when transparent delivery is needed.
 - For scene plates, remove people and movable objects only when doing so will not break the geometry of the scene.
+- Use the delivery statuses from `qa-delivery-contract.md`. Local crops, logo masks, reused older generations, and provider-blocked substitutes must be `fallback_review_required` or `reference_only`, not `ready_for_video_model`.
+- A `clean_model_plain_background` asset fails its role if the background still contains bed, window, furniture, product, UI, captions, or scene residue.
+- A `clean_model_pose_pack` must export individual pose images as final assets. A collage-only pose sheet is `reference_only` unless each pose is also delivered separately.
+- A `wardrobe_detail` asset must primarily show garment/material/accessory construction details; face or upper-body crops are role failures.
+- Empty scene plates should be judged against source geometry, not aesthetic quality alone.
 
 ## Suggested Minimum Pack
 
@@ -48,3 +53,4 @@ For a normal short fashion/street video recreation:
 - 2 pose reference prompts matching the main walk/action beats
 - 1 transition reference prompt
 - 1 negative-control entry
+- 1 QA manifest with role acceptance rules and final delivery statuses

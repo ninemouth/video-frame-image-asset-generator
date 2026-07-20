@@ -55,10 +55,12 @@ If the visual evidence brief is missing, the prompt is a draft only and must not
 When the source includes a model/person, include model prompts before product/prop prompts:
 
 - `clean_model_scene_reference`: keep the model in the original cleaned scene.
-- `clean_model_plain_background`: isolate a non-identity-locked ordinary model reference on white/light gray.
-- `clean_model_pose_pack`: cover the main source pose/action beats.
+- `clean_model_plain_background`: isolate a non-identity-locked ordinary model reference on true white/light gray with no bed, window, furniture, product, UI, captions, watermarks, or scene residue.
+- `clean_model_pose_pack`: cover the main source pose/action beats and request individual image files for each pose in addition to any overview sheet.
 
 Model prompts must preserve visible source-grounded facts such as age range, hairstyle category, clothing category, body crop, pose logic, camera angle, and interaction with the scene/product. They must remove UI, captions, watermarks, unauthorized logos, and compression artifacts. Do not claim exact identity preservation unless the user explicitly confirms rights and intent.
+
+Reject role-mismatched outputs: a plain-background model with scene residue is `failed_role` or `retry_required`; a collage-only pose sheet is `reference_only`; a local crop or mask fallback is `fallback_review_required`.
 
 ## Prop And Wardrobe Cutouts
 
@@ -67,6 +69,12 @@ For isolated props:
 - Require the full object inside frame, no cropping, no floating, no extra straps/handles unless visible in evidence.
 - Use pure white or light gray for inspection; use chroma-key only for transparent extraction workflows.
 - For shiny black items, request visible edge highlights and material separation so details do not collapse into a single dark blob.
+
+For wardrobe details, require material and construction evidence such as straps, closures, wrinkles, texture, edges, hardware, or layered garment structure. A face crop or low-information body crop does not satisfy `wardrobe_detail`.
+
+## Delivery Status
+
+Before delivery, classify every image with the status vocabulary in `qa-delivery-contract.md`: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`. Do not place uncertain fallback outputs into `final-assets/` without a manifest status that makes the limitation clear.
 
 ## Third-Party API Notes
 

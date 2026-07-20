@@ -15,12 +15,14 @@ const requiredFiles = [
   "references/asset-taxonomy.md",
   "references/scene-stability-assets.md",
   "references/prompt-contract.md",
+  "references/qa-delivery-contract.md",
   "references/provider-routing.md",
   "scripts/configure-image-provider.mjs",
   "scripts/create-asset-run.mjs",
   "scripts/plan-image-assets.mjs",
   "scripts/resolve-image-provider.mjs",
   "scripts/third-party-image-runtime.mjs",
+  "scripts/validate-asset-manifest.mjs",
   "scripts/sync-to-codex-skill.mjs"
 ];
 
@@ -47,18 +49,28 @@ async function main() {
   if (!skill.startsWith("---\nname: video-frame-image-asset-generator\n")) {
     fail("SKILL.md frontmatter name is invalid");
   }
-  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md"]) {
+  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md", "qa-delivery-contract.md", "fallback_review_required"]) {
     if (!skill.includes(term)) fail(`SKILL.md missing required term: ${term}`);
   }
 
   const planner = await readFile(path.join(root, "scripts", "plan-image-assets.mjs"), "utf8");
-  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only"]) {
+  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only", "ready_for_video_model", "fallback_review_required", "failed_role", "plain_background_must_be_plain"]) {
     if (!planner.includes(term)) fail(`plan-image-assets.mjs missing stability guard: ${term}`);
+  }
+
+  const manifestValidator = await readFile(path.join(root, "scripts", "validate-asset-manifest.mjs"), "utf8");
+  for (const term of ["allowedFinalStatuses", "ready_for_video_model", "fallback_review_required", "failed_role", "acceptance"]) {
+    if (!manifestValidator.includes(term)) fail(`validate-asset-manifest.mjs missing required term: ${term}`);
   }
 
   const provider = await readFile(path.join(root, "references", "provider-routing.md"), "utf8");
   for (const term of ["VIDEO_IMAGE_PROVIDER_API_KEY", "THINKAI_API_KEY", "CHARLIE_KEY", "/images/generations", "image-provider.json"]) {
     if (!provider.includes(term)) fail(`provider routing missing required term: ${term}`);
+  }
+
+  const qaContract = await readFile(path.join(root, "references", "qa-delivery-contract.md"), "utf8");
+  for (const term of ["ready_for_video_model", "reference_only", "fallback_review_required", "retry_required", "failed_role", "clean_model_plain_background", "clean_model_pose_pack", "wardrobe_detail"]) {
+    if (!qaContract.includes(term)) fail(`qa-delivery-contract.md missing required term: ${term}`);
   }
 
   const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
@@ -67,6 +79,9 @@ async function main() {
   }
   if (!pkg.scripts?.["configure:image-provider"]) {
     fail("package.json missing configure:image-provider script");
+  }
+  if (!pkg.scripts?.["validate:manifest"]) {
+    fail("package.json missing validate:manifest script");
   }
 
   for (const file of requiredFiles.filter((file) => file.endsWith(".mjs"))) {

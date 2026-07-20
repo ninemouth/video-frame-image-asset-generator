@@ -56,7 +56,16 @@ If these details are missing, mark the request pack as `ready_for_generation: fa
 Do not confuse empty scene plates with complete recreation support. When the source video has a model, the pack is incomplete unless it also includes clean model assets:
 
 - `clean_model_scene_reference`: model remains in the source scene, UI/captions/watermarks removed.
-- `clean_model_plain_background`: model isolated on white/light gray for replacement or compositing.
-- `clean_model_pose_pack`: several source-grounded pose/action beats from the video timeline.
+- `clean_model_plain_background`: model isolated on true white/light gray for replacement or compositing; no bed, window, furniture, product, UI, captions, watermarks, or scene residue.
+- `clean_model_pose_pack`: several source-grounded pose/action beats from the video timeline; final assets must include individual pose images, not only a collage.
 
 These must preserve clothing category, hairstyle category, pose logic, camera crop, and scene interaction while avoiding biometric identity claims unless the user has explicitly authorized identity preservation.
+
+## Delivery Gate
+
+Scene stability assets are useful only when their role is honest. Before delivery:
+
+- Mark source crops, masked frames, reused older generations, and provider-blocked substitutes as `fallback_review_required` or `reference_only`.
+- Mark role-mismatched outputs as `failed_role` or `retry_required`.
+- Mark an image `ready_for_video_model` only after visual QA confirms the role-specific constraints in `qa-delivery-contract.md`.
+- Run `scripts/validate-asset-manifest.mjs` when an asset manifest is available.

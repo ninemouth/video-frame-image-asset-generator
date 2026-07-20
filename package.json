@@ -13,6 +13,7 @@
     "plan": "node scripts/plan-image-assets.mjs",
     "resolve-provider": "node scripts/resolve-image-provider.mjs",
     "third-party:generate": "node scripts/third-party-image-runtime.mjs",
+    "validate:manifest": "node scripts/validate-asset-manifest.mjs",
     "sync": "node scripts/sync-to-codex-skill.mjs --source .",
     "verify": "node scripts/verify-skill.mjs"
   },

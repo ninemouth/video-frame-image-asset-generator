@@ -53,6 +53,9 @@ Keep the two responsibilities separate:
 7. QA and deliver:
    - Save final images under the run-local `generated-assets/` or `final-assets/`.
    - Update `output/asset-manifest.json` with final paths, provider, prompt id, source evidence, and QA status.
+   - Use role-level delivery statuses: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`.
+   - Local crops, masked frames, reused older generations, and provider-blocked substitutes are useful references, but they must be marked `fallback_review_required` or `reference_only`; never mark them `ready_for_video_model`.
+   - Run `scripts/validate-asset-manifest.mjs` before delivery when an asset manifest exists.
    - Provide direct-access output files; do not make the user hunt through internal work folders.
 
 ## Asset Roles
@@ -64,8 +67,8 @@ Default roles are:
 - `surface_interaction_plate`: clean close-up surface/interaction area for later hands, products, props, or motion.
 - `ui_free_scene_reconstruction`: same shot feeling but clean, brand-free, platform-UI-free.
 - `clean_model_scene_reference`: source-grounded clean model photo inside the cleaned original scene.
-- `clean_model_plain_background`: clean non-identity-locked model/person photo on white or light gray background.
-- `clean_model_pose_pack`: 3-5 clean source-grounded model pose/action references from the video timeline.
+- `clean_model_plain_background`: clean non-identity-locked model/person photo on true white or light gray background; no bed, window, furniture, product, UI, or scene residue.
+- `clean_model_pose_pack`: 3-5 clean source-grounded model pose/action references from the video timeline; final delivery must include individual pose images, not only a collage sheet.
 - `character_turnaround`: same designed character or user-authorized subject, front/side/back/three-quarter on plain light background.
 - `wardrobe_detail`: clothing/accessory material, silhouette, closures, texture, and layered details.
 - `prop_cutout`: bag, shoe, tool, furniture, handheld item, vehicle detail, or other isolated prop.
@@ -76,6 +79,7 @@ Default roles are:
 
 Read `references/asset-taxonomy.md` when role choice matters or the user asks for a full asset pack.
 Read `references/scene-stability-assets.md` when the user complains about unstable video recreation, generic image outputs, or asks for empty scene plates.
+Read `references/qa-delivery-contract.md` before deciding whether generated files can be placed in `final-assets/` or marked video-ready.
 
 ## Prompt Contract
 
@@ -120,10 +124,12 @@ Third-party runtime environment variables:
 - `scripts/plan-image-assets.mjs`: build `asset-generation-plan.json`, `prompt-pack.md`, `request-pack.jsonl`, and manifest drafts from frame evidence.
 - `scripts/resolve-image-provider.mjs`: resolve native, third-party, or request-pack routing without exposing secrets.
 - `scripts/third-party-image-runtime.mjs`: execute OpenAI-compatible text-to-image prompts and save images to the run.
+- `scripts/validate-asset-manifest.mjs`: validate prompt targets, role acceptance rules, final status vocabulary, and fallback status safety.
 - `scripts/verify-skill.mjs`: validate file shape, script syntax, and required contract terms.
 - `scripts/sync-to-codex-skill.mjs`: sync a development copy into `${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator`.
 - `references/frame-source-contract.md`: expected source inputs and frame-index mapping.
 - `references/asset-taxonomy.md`: asset role definitions and default shot matrix.
 - `references/scene-stability-assets.md`: stability-first scene plate rules for improving video recreation consistency.
 - `references/prompt-contract.md`: prompt schema, evidence locks, negatives, and QA rules.
+- `references/qa-delivery-contract.md`: hard role QA and final delivery status rules.
 - `references/provider-routing.md`: native and third-party execution boundaries.
