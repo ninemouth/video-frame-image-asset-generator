@@ -44,6 +44,8 @@ Never mark a fallback, crop, mask, or reused prior-generation image as `ready_fo
 
 `prop_cutout` must show the complete object on plain or transparent-ready background with enough padding. Straps, chains, handles, soles, or furniture edges must not float or break.
 
+`pose_reference_pack` must deliver separate single-image pose references, not only a collage sheet. Use it for the main walk, turn, sit, lie, hand-action, and close-up pose beats from the source timeline.
+
 ## Manifest Requirements
 
 `output/asset-manifest.json` must keep:

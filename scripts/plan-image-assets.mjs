@@ -327,13 +327,13 @@ function buildTargets(frames, language, options = {}) {
     {
       id: "pose-reference-001",
       role: "pose_reference_pack",
-      title: zh ? "关键动作姿态包" : "Pose reference pack",
+      title: zh ? "关键动作独立姿态图" : "Individual pose reference set",
       source_evidence: evidence,
       ready_for_generation: hasVisualBrief,
       provider_mode: requestMode,
       prompt: zh
-        ? `创建与证据帧 ${evidence} 对应的关键动作姿态参考图，纯色背景，保持人物设计和服装一致，输出行走/转身/近景/细节展示等主要姿态。不要平台 UI，不要文字，不要多余肢体。`
-        : `Create pose references corresponding to evidence frames ${evidence}. Plain background, consistent character design and outfit, include main walking/turning/close-up/detail poses. No UI, no text, no extra limbs.`
+        ? `创建与证据帧 ${evidence} 对应的关键动作独立姿态图，纯色背景，保持同一人物设计和服装一致，分别输出行走、转身、躺卧/坐起、手部触碰产品、近景肩颈等主要姿态。每个姿态都必须是独立单图，不要拼贴成一张 sheet，不要平台 UI，不要文字，不要多余肢体。`
+        : `Create individual pose reference images corresponding to evidence frames ${evidence}. Plain background, consistent character design and outfit, separately output walking, turning, lying/sitting up, hand-touching-product, and shoulder/neck close-up poses. Each pose must be its own image, not a collage sheet. No UI, no text, no extra limbs.`
     },
     {
       id: "transition-reference-001",

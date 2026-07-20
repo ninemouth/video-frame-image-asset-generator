@@ -50,7 +50,7 @@ For a normal short fashion/street video recreation:
 - If a model appears: 1 clean model pose pack
 - 1 character turnaround sheet prompt
 - 3 wardrobe/detail prompts: upper body, lower body/shoes, bag/prop
-- 2 pose reference prompts matching the main walk/action beats
+- 2 pose reference prompts matching the main walk/action beats, with separate single-image outputs
 - 1 transition reference prompt
 - 1 negative-control entry
 - 1 QA manifest with role acceptance rules and final delivery statuses

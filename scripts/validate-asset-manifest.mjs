@@ -53,6 +53,15 @@ function isFallback(asset) {
     || /fallback/.test(String(status).toLowerCase());
 }
 
+function siblingCountForAsset(asset, directoryEntries) {
+  const base = basenameOf(asset).replace(/\.(png|jpe?g|webp)$/i, "");
+  return directoryEntries.filter((name) =>
+    name !== basenameOf(asset)
+    && name.startsWith(base)
+    && /\.(png|jpe?g|webp)$/i.test(name)
+  ).length;
+}
+
 function ffprobeDimensions(file) {
   const result = spawnSync("ffprobe", [
     "-v", "error",
@@ -242,22 +251,21 @@ async function main() {
         }
 
         if (asset.role === "clean_model_pose_pack") {
+          let siblingCount = 0;
+          try {
+            siblingCount = siblingCountForAsset(asset, readdirSync(path.dirname(file)));
+          } catch {
+            siblingCount = 0;
+          }
           if (metrics.width > metrics.height && metrics.borderWhiteRatio > 0.55) {
             warnings.push(`pose pack asset ${id} looks collage-like; individual pose files should be delivered alongside it`);
           }
-          const dir = path.dirname(file);
-          const base = basenameOf(asset).replace(/\.(png|jpe?g|webp)$/i, "");
-          const siblings = Array.from(new Set(
-            [".png", ".jpg", ".jpeg", ".webp"].flatMap((ext) => {
-              try {
-                return readdirSync(dir).filter((name) => name.startsWith(base) && name !== basenameOf(asset) && name.endsWith(ext));
-              } catch {
-                return [];
-              }
-            })
-          ));
-          if (!siblings.length && !/-(\d{2,}|left|right|front|back|side|three-quarter)$/i.test(base)) {
-            warnings.push(`pose pack asset ${id} has no obvious individual pose siblings next to it`);
+          if (!siblingCount && !/-(\d{2,}|left|right|front|back|side|three-quarter)$/i.test(basenameOf(asset))) {
+            if (status === "ready_for_video_model") {
+              errors.push(`pose pack asset ${id} is marked ready_for_video_model but has no obvious individual pose siblings next to it`);
+            } else {
+              warnings.push(`pose pack asset ${id} has no obvious individual pose siblings next to it`);
+            }
           }
         }
       } else {

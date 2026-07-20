@@ -69,7 +69,7 @@ async function main() {
   }
 
   const qaContract = await readFile(path.join(root, "references", "qa-delivery-contract.md"), "utf8");
-  for (const term of ["ready_for_video_model", "reference_only", "fallback_review_required", "retry_required", "failed_role", "clean_model_plain_background", "clean_model_pose_pack", "wardrobe_detail"]) {
+  for (const term of ["ready_for_video_model", "reference_only", "fallback_review_required", "retry_required", "failed_role", "clean_model_plain_background", "clean_model_pose_pack", "wardrobe_detail", "pose_reference_pack"]) {
     if (!qaContract.includes(term)) fail(`qa-delivery-contract.md missing required term: ${term}`);
   }
 

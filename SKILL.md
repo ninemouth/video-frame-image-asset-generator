@@ -73,7 +73,7 @@ Default roles are:
 - `wardrobe_detail`: clothing/accessory material, silhouette, closures, texture, and layered details.
 - `prop_cutout`: bag, shoe, tool, furniture, handheld item, vehicle detail, or other isolated prop.
 - `background_plate`: reusable environment plate for later compositing or video generation.
-- `pose_reference_pack`: repeated poses matching key timeline moments, usually on pure background.
+- `pose_reference_pack`: repeated poses matching key timeline moments, delivered as separate single images on pure background rather than only a collage.
 - `transition_reference`: clean stills that express radial blur, zoom, smear, motion streak, or other transition language without baked UI.
 - `negative_control`: examples and prompt negatives that prevent identity drift, mirrored text, floating props, brand logos, extra limbs, wrong aspect ratio, and low-information frames.
 
