@@ -73,4 +73,19 @@ Before handoff, run:
 node scripts/organize-final-assets.mjs --run-dir /abs/asset-run --clean
 ```
 
-This splits direct-access files into `final-assets/ready/`, `final-assets/reference-only/`, `final-assets/fallback-review/`, `final-assets/retry-required/`, and `final-assets/failed-role/` so users do not accidentally treat review or fallback assets as video-ready.
+This keeps `final-assets/` clean and limited to `ready_for_video_model` assets only. Non-final assets are physically isolated under `review-assets/`:
+
+- `review-assets/reference-only/`
+- `review-assets/fallback-review/`
+- `review-assets/retry-required/`
+- `review-assets/failed-role/`
+
+Do not put `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role` files inside the final output directory. They are audit material, not final deliverables.
+
+For user-facing zip delivery, run:
+
+```bash
+node scripts/package-final-assets.mjs --run-dir /abs/asset-run --clean
+```
+
+The clean handoff package must include only `final-assets/`, `README.md`, and `clean-final-handoff-manifest.json`. A full run archive may include `review-assets/`, `generated-assets/`, `local-reference-assets/`, `qa/`, `provider/`, and `planning/`, but it must be named and described as an audit/debug package rather than final usable assets.

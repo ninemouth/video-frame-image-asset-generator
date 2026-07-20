@@ -268,11 +268,69 @@ async function testFinalAssetsOrganizerBuckets() {
   const result = await runNode(["scripts/organize-final-assets.mjs", "--run-dir", runDir, "--clean"]);
   assert(result.status === 0, `organizer fixture failed: ${result.stderr || result.stdout}`);
   assert(existsSync(path.join(runDir, "final-assets", "ready", "ready.png")), "organizer missing ready asset");
-  assert(existsSync(path.join(runDir, "final-assets", "reference-only", "reference.png")), "organizer missing reference asset");
+  assert(!existsSync(path.join(runDir, "final-assets", "reference-only", "reference.png")), "organizer should not put reference asset in final-assets");
+  assert(existsSync(path.join(runDir, "review-assets", "reference-only", "reference.png")), "organizer missing review reference asset");
+  assert(existsSync(path.join(runDir, "review-assets", "review-assets-index.json")), "organizer missing review index");
   assert(existsSync(path.join(runDir, "final-assets", "final-assets-index.json")), "organizer missing index");
 
   const updated = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
   assert(updated.final_assets_directories?.index, "organizer did not write final_assets_directories");
+  assert(updated.final_assets_directories?.final_only === true, "organizer did not mark final assets as final_only");
+  assert(updated.final_assets_directories?.review_index, "organizer did not write review index path");
+}
+
+async function testFinalAssetsPackageExcludesReviewAssets() {
+  const runDir = await createRun("package-final");
+  await writePng(path.join(runDir, "generated-assets", "ready.png"));
+  await writePng(path.join(runDir, "generated-assets", "reference.png"));
+  await writePng(path.join(runDir, "local-reference-assets", "fallback.png"));
+  const manifest = baseManifest("package-final-test", promptTarget("ready"));
+  manifest.prompt_targets.push(promptTarget("reference", "clean_model_pose_pack"));
+  manifest.generated_assets = [
+    {
+      id: "ready",
+      role: "clean_scene_plate",
+      final_path: "generated-assets/ready.png",
+      delivery_status: "ready_for_video_model",
+      qa_status: "passed"
+    },
+    {
+      id: "reference",
+      role: "clean_model_pose_pack",
+      final_path: "generated-assets/reference.png",
+      delivery_status: "reference_only",
+      qa_status: "pending_visual_review"
+    },
+    {
+      id: "fallback",
+      role: "clean_model_plain_background",
+      final_path: "local-reference-assets/fallback.png",
+      source: "local_source_frame_crop",
+      delivery_status: "fallback_review_required",
+      qa_status: "review_required"
+    }
+  ];
+  await writeJson(path.join(runDir, "output", "asset-manifest.json"), manifest);
+
+  let result = await runNode(["scripts/organize-final-assets.mjs", "--run-dir", runDir, "--clean"]);
+  assert(result.status === 0, `organizer before package failed: ${result.stderr || result.stdout}`);
+  result = await runNode(["scripts/package-final-assets.mjs", "--run-dir", runDir, "--clean", "--no-zip"]);
+  assert(result.status === 0, `package fixture failed: ${result.stderr || result.stdout}`);
+
+  const handoffDir = path.join(runDir, "delivery", "final-assets-handoff");
+  assert(existsSync(path.join(handoffDir, "final-assets", "ready", "ready.png")), "clean handoff missing ready asset");
+  assert(!existsSync(path.join(handoffDir, "final-assets", "reference-only", "reference.png")), "clean handoff should not include reference asset");
+  assert(!existsSync(path.join(handoffDir, "review-assets", "fallback-review", "fallback.png")), "clean handoff should not include review-assets");
+  assert(!existsSync(path.join(handoffDir, "generated-assets", "reference.png")), "clean handoff should not include generated-assets root");
+  assert(!existsSync(path.join(handoffDir, "local-reference-assets", "fallback.png")), "clean handoff should not include local-reference-assets root");
+
+  const handoff = JSON.parse(await readFile(path.join(handoffDir, "clean-final-handoff-manifest.json"), "utf8"));
+  assert(handoff.final_only === true, "clean handoff manifest should be final_only");
+  assert(handoff.ready_asset_files.includes("ready/ready.png"), "clean handoff manifest missing ready file");
+  assert(handoff.excluded_roots.includes("review-assets"), "clean handoff manifest should document excluded review-assets");
+
+  const updated = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
+  assert(updated.clean_final_handoff?.final_only === true, "asset manifest missing clean_final_handoff marker");
 }
 
 async function testPlannerBlocksGenerationWithoutVisualBrief() {
@@ -470,6 +528,7 @@ async function main() {
     testThirdPartySuccessUpdatesManifest,
     testThirdPartyFailureUpdatesManifest,
     testFinalAssetsOrganizerBuckets,
+    testFinalAssetsPackageExcludesReviewAssets,
     testPlannerBlocksGenerationWithoutVisualBrief,
     testPlannerIncludesCleanModelTargetsWithHumanBrief,
     testValidatorRejectsBrokenProductSceneBrief,

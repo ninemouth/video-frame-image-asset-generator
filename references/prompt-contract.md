@@ -78,7 +78,7 @@ For non-wardrobe product details, use `product_material_detail` instead of `ward
 
 ## Delivery Status
 
-Before delivery, classify every image with the status vocabulary in `qa-delivery-contract.md`: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`. Do not place uncertain fallback outputs into `final-assets/` without a manifest status that makes the limitation clear.
+Before delivery, classify every image with the status vocabulary in `qa-delivery-contract.md`: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`. Only `ready_for_video_model` files may be placed in `final-assets/`; all other statuses belong in `review-assets/`. User-facing final handoff folders or zip files must package `final-assets/` only. Full run archives are audit/debug packages and must not be presented as clean final assets.
 
 ## Third-Party API Notes
 

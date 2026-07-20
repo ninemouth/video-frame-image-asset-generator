@@ -56,7 +56,8 @@ Keep the two responsibilities separate:
    - Update `output/asset-manifest.json` with final paths, provider, prompt id, source evidence, and QA status.
    - Use role-level delivery statuses: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`.
    - Local crops, masked frames, reused older generations, and provider-blocked substitutes are useful references, but they must be marked `fallback_review_required` or `reference_only`; never mark them `ready_for_video_model`.
-   - Run `scripts/organize-final-assets.mjs` before handoff so `final-assets/` is split into `ready/`, `reference-only/`, `fallback-review/`, `retry-required/`, and `failed-role/`.
+   - Run `scripts/organize-final-assets.mjs` before handoff so `final-assets/` contains only `ready_for_video_model` assets. Non-final `reference_only`, `fallback_review_required`, `retry_required`, and `failed_role` assets must be isolated under `review-assets/`.
+   - Run `scripts/package-final-assets.mjs` when creating a user-facing handoff package or zip. The clean handoff must include only `final-assets/`; a full run archive is an audit/debug package, not the final asset delivery.
    - Run `scripts/validate-asset-manifest.mjs` before delivery when an asset manifest exists; use `--inspect-images` on final passes when the generated files are available locally, and `--write-report` when handing results to a user or operator.
    - Provide direct-access output files; do not make the user hunt through internal work folders.
 
@@ -129,7 +130,8 @@ Third-party runtime environment variables:
 - `scripts/plan-image-assets.mjs`: build `asset-generation-plan.json`, `prompt-pack.md`, `request-pack.jsonl`, and manifest drafts from frame evidence.
 - `scripts/resolve-image-provider.mjs`: resolve native, third-party, or request-pack routing without exposing secrets.
 - `scripts/third-party-image-runtime.mjs`: execute OpenAI-compatible text-to-image prompts and save images to the run.
-- `scripts/organize-final-assets.mjs`: copy generated assets into status-specific final directories for safer direct user access.
+- `scripts/organize-final-assets.mjs`: copy only video-ready assets into `final-assets/` and isolate review/fallback/failed assets under `review-assets/` for safer direct user access.
+- `scripts/package-final-assets.mjs`: create a clean final handoff folder and zip containing only `final-assets/`; full run archives are audit packages.
 - `scripts/validate-asset-manifest.mjs`: validate prompt targets, role acceptance rules, final status vocabulary, and fallback status safety.
 - `scripts/verify-skill.mjs`: validate file shape, script syntax, and required contract terms.
 - `scripts/sync-to-codex-skill.mjs`: sync a development copy into `${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator`.

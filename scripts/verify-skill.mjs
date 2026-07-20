@@ -21,6 +21,7 @@ const requiredFiles = [
   "scripts/configure-image-provider.mjs",
   "scripts/create-asset-run.mjs",
   "scripts/organize-final-assets.mjs",
+  "scripts/package-final-assets.mjs",
   "scripts/plan-image-assets.mjs",
   "scripts/resolve-image-provider.mjs",
   "scripts/third-party-image-runtime.mjs",
@@ -77,8 +78,13 @@ async function main() {
   }
 
   const finalAssetsOrganizer = await readFile(path.join(root, "scripts", "organize-final-assets.mjs"), "utf8");
-  for (const term of ["ready_for_video_model", "reference-only", "fallback-review", "retry-required", "failed-role", "final-assets-index.json"]) {
+  for (const term of ["ready_for_video_model", "final_only", "review-assets", "reference-only", "fallback-review", "retry-required", "failed-role", "final-assets-index.json", "review-assets-index.json"]) {
     if (!finalAssetsOrganizer.includes(term)) fail(`organize-final-assets.mjs missing final asset directory behavior: ${term}`);
+  }
+
+  const finalAssetsPackager = await readFile(path.join(root, "scripts", "package-final-assets.mjs"), "utf8");
+  for (const term of ["clean-final-handoff", "final_only", "excluded_roots", "review-assets", "generated-assets", "local-reference-assets", "ready_for_video_model"]) {
+    if (!finalAssetsPackager.includes(term)) fail(`package-final-assets.mjs missing clean handoff behavior: ${term}`);
   }
 
   const provider = await readFile(path.join(root, "references", "provider-routing.md"), "utf8");
@@ -100,6 +106,9 @@ async function main() {
   }
   if (!pkg.scripts?.["organize:final-assets"]) {
     fail("package.json missing organize:final-assets script");
+  }
+  if (!pkg.scripts?.["package:final-assets"]) {
+    fail("package.json missing package:final-assets script");
   }
   if (!pkg.scripts?.["validate:manifest"]) {
     fail("package.json missing validate:manifest script");

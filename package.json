@@ -14,6 +14,7 @@
     "resolve-provider": "node scripts/resolve-image-provider.mjs",
     "third-party:generate": "node scripts/third-party-image-runtime.mjs",
     "organize:final-assets": "node scripts/organize-final-assets.mjs",
+    "package:final-assets": "node scripts/package-final-assets.mjs",
     "validate:manifest": "node scripts/validate-asset-manifest.mjs",
     "validate:manifest:images": "node scripts/validate-asset-manifest.mjs --inspect-images",
     "validate:manifest:report": "node scripts/validate-asset-manifest.mjs --inspect-images --write-report",
