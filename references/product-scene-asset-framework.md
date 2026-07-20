@@ -29,7 +29,7 @@ Choose assets by dependency, not by product category:
 | Human action | Does a person/model drive the video logic? | `clean_model_scene_reference`, `clean_model_plain_background`, `clean_model_pose_pack`, `pose_reference_pack` |
 | Product/object control | What object must keep shape, scale, and material? | `prop_cutout`, role-specific product prompt in request pack |
 | Wear/fit/control on body | Is the product worn, held, applied, rested on, or pressed against the body? | `clean_model_pose_pack`, `pose_reference_pack`, `surface_interaction_plate`, `wardrobe_detail` |
-| Material/detail | Is the selling point texture, stitching, gloss, softness, transparency, fill, hardware, or construction? | `wardrobe_detail`, `prop_cutout`, macro/detail prompt |
+| Material/detail | Is the selling point texture, stitching, gloss, softness, transparency, fill, hardware, liquid/effect state, screen/label zone, or construction? | `product_material_detail`, `wardrobe_detail` only for worn-item evidence, `prop_cutout`, macro/detail prompt |
 | Transition/motion language | Does the source use zoom, blur, wipe, speed ramp, or repeated action beats? | `transition_reference`, `negative_control` |
 | Risk control | What failures would make the video unusable? | `negative_control`, QA manifest rules |
 
@@ -42,6 +42,7 @@ Choose assets by dependency, not by product category:
 - If the video contains platform UI or overlaid text, include a UI-free reconstruction to keep the original composition while removing the overlay.
 - If the source has strong camera changes, create camera angle plates before product detail assets.
 - If source evidence is weak, generate request packs and QA checklists first; do not send generic prompts to the provider.
+- Generate only roles listed in `product_scene_control_brief.required_asset_roles`. If the role is not required for the current task, it must not be sent to the provider. Wrong-place assets such as unrelated wardrobe sets, character turnarounds, bags, shoes, or historical-task products should be blocked before generation, not deferred to QA.
 - If the product uses liquid, powder, smoke, steam, foam, food, spray, or other changing states, define the effect contact zone, flow direction, viscosity/state, shadows, and before/after frame match. Do not let the provider invent splashes, vapor, or food textures not present in evidence.
 - If the product includes a screen, display, label, package, bottle, or box, define the physical screen/label zone separately from text content. Default to removing or neutralizing unauthorized UI/logo/text; prevent mirrored text and wrong screen aspect.
 - If the product is transparent, glass, reflective, metal, or mirror-like, define edge visibility, reflection direction, opacity, and background influence. Do not accept cloudy glass, lost edges, or random reflections.

@@ -17,6 +17,7 @@ Use this reference when choosing what image assets to generate from frame eviden
 | `character_turnaround` | Multi-angle same designed character or authorized person | plain light gray or white | best full-body and close-up frames |
 | `pose_reference_pack` | Pose states matching video timeline | plain light gray, white, or chroma key | action frames, transition endpoints |
 | `wardrobe_detail` | Clothing, shoes, accessories, material and construction | white, light gray, or macro studio | close-ups and detail frames |
+| `product_material_detail` | Current product material, structure, texture, transparency, reflection, compression, liquid/effect state, screen/label zone, or mechanical state | white, light gray, macro, or source-grounded close-up | product close-ups, material/effect frames, screen/label frames |
 | `prop_cutout` | Isolated bag, tool, object, product, vehicle, furniture, etc. | pure white or chroma key | close-up frames and product focus |
 | `transition_reference` | Clean still for radial blur, zoom, smear, motion streak language | source scene or abstract transparent-ready streaks | transition frames, blur endpoints |
 | `negative_control` | Prevent wrong identities, logos, UI, extra limbs, floating props, bad aspect | text-only QA/request pack | failed frames and risk notes |
@@ -26,6 +27,7 @@ Use this reference when choosing what image assets to generate from frame eviden
 - Preserve aspect ratio unless the user asks for a different generation target.
 - Prioritize scene stability plates before product, character, lifestyle, explainer, or detail assets.
 - For commercial/product videos, use `product-scene-asset-framework.md` to derive assets from the product's role, action dependencies, contact surfaces, material/detail claims, and scene dependencies instead of maintaining product-category presets.
+- Generate only roles listed in `product_scene_control_brief.required_asset_roles`. If the current task is not fashion/worn-item evidence, do not emit `wardrobe_detail`, `character_turnaround`, or fashion prop requests. Use `product_material_detail` for non-wardrobe product details.
 - Remove social UI, captions, creator watermarks, brand marks, mirrored text, and black/white transition artifacts by default.
 - Do not generate generic ecommerce/product/studio imagery when the source is a video scene. The output must stay anchored to visually inspected frame geometry.
 - If the source evidence contains a model/person, clean model assets are mandatory. Generate clean in-scene model reference, plain-background model reference, and model pose pack before prop/product cutouts.
@@ -35,7 +37,8 @@ Use this reference when choosing what image assets to generate from frame eviden
 - Use the delivery statuses from `qa-delivery-contract.md`. Local crops, logo masks, reused older generations, and provider-blocked substitutes must be `fallback_review_required` or `reference_only`, not `ready_for_video_model`.
 - A `clean_model_plain_background` asset fails its role if the background still contains bed, window, furniture, product, UI, captions, or scene residue.
 - A `clean_model_pose_pack` must export individual pose images as final assets. A collage-only pose sheet is `reference_only` unless each pose is also delivered separately.
-- A `wardrobe_detail` asset must primarily show garment/material/accessory construction details; face or upper-body crops are role failures.
+- A `wardrobe_detail` asset must primarily show garment/material/accessory construction details and is only appropriate when worn-item or wardrobe evidence is present; face or upper-body crops are role failures.
+- A `product_material_detail` asset must show the current product's evidence-grounded material/structure/effect details and fails if it becomes unrelated clothing, bags, shoes, gloves, character styling, or generic ecommerce imagery.
 - Empty scene plates should be judged against source geometry, not aesthetic quality alone.
 
 ## Suggested Minimum Pack

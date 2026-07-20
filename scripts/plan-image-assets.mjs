@@ -133,6 +133,9 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   const actionDependencies = [];
   const sceneDependencies = [];
   const materialDetailClaims = [];
+  let hasWornOrWardrobeEvidence = false;
+  let hasProductOrPropEvidence = false;
+  let hasMaterialOrDetailEvidence = false;
   const interactionSurfaces = [];
   const stableInvariants = [];
   const isolationTargets = [];
@@ -184,12 +187,15 @@ function deriveProductSceneControlBrief(visualBrief, language) {
 
   if (hasAny(text, [/商品|产品|枕头|服装|鞋|包|道具|物体|product|pillow|item|object|prop|bag|shoe|garment/i])) {
     roleSignals.push(zh ? "hero_product_or_prop" : "hero_product_or_prop");
+    hasProductOrPropEvidence = true;
     isolationTargets.push("product_or_prop");
     stableInvariants.push("product_shape_scale_material");
     controlLayers.push("product_object_control");
   }
   if (hasAny(text, [/穿|佩戴|上身|服装|鞋|包|worn|wear|outfit|dress|shoe|bag/i])) {
     roleSignals.push("worn_or_styled_item");
+    hasWornOrWardrobeEvidence = true;
+    hasProductOrPropEvidence = true;
     isolationTargets.push("wardrobe_or_worn_item");
     stableInvariants.push("fit_body_relationship");
     controlLayers.push("wear_fit_control_on_body");
@@ -212,12 +218,15 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   }
   if (hasAny(text, [/材质|面料|纹理|褶皱|光泽|柔软|压缩|透明|缝线|texture|fabric|material|wrinkle|gloss|soft|compression|transparent|stitch/i])) {
     materialDetailClaims.push("visible_material_or_construction_detail");
+    hasMaterialOrDetailEvidence = true;
     isolationTargets.push("material_detail");
     stableInvariants.push("material_texture_color_edge");
     controlLayers.push("material_detail");
   }
   if (hasAny(text, [/液体|水|油|粉末|烟雾|蒸汽|泡沫|食物|倒入|喷|liquid|water|oil|powder|smoke|steam|foam|food|pour|spray/i])) {
     roleSignals.push("consumable_or_effect_item");
+    hasProductOrPropEvidence = true;
+    hasMaterialOrDetailEvidence = true;
     actionDependencies.push("liquid_powder_smoke_or_food_effect");
     materialDetailClaims.push("effect_state_or_flow_detail");
     interactionSurfaces.push("effect_contact_zone");
@@ -226,6 +235,8 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   }
   if (hasAny(text, [/屏幕|显示|界面|手机|电脑|电视|仪表|screen|display|phone|computer|tv|interface|dashboard/i])) {
     roleSignals.push("screen_or_display_item");
+    hasProductOrPropEvidence = true;
+    hasMaterialOrDetailEvidence = true;
     actionDependencies.push("screen_content_or_reflection_dependency");
     stableInvariants.push("screen_shape_perspective_reflection");
     riskControls.push(zh ? "不得生成镜像文字、无来源 UI 或错误屏幕比例" : "prevent mirrored text, unsourced UI, or wrong screen aspect");
@@ -233,6 +244,7 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   }
   if (hasAny(text, [/透明|玻璃|反光|金属|镜面|transparent|glass|reflective|metal|mirror/i])) {
     materialDetailClaims.push("transparent_or_reflective_material_detail");
+    hasMaterialOrDetailEvidence = true;
     riskControls.push(zh ? "防止透明材质变浑浊、反射方向错误或边缘消失" : "prevent cloudy transparency, wrong reflection direction, or lost edges");
     controlLayers.push("material_detail");
   }
@@ -244,12 +256,15 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   }
   if (hasAny(text, [/机械|旋转|折叠|开合|按键|轮子|motor|mechanical|rotate|fold|hinge|button|wheel/i])) {
     actionDependencies.push("mechanical_motion_or_state_change");
+    hasProductOrPropEvidence = true;
+    hasMaterialOrDetailEvidence = true;
     stableInvariants.push("mechanical_parts_axis_and_state");
     riskControls.push(zh ? "防止机械部件数量、轴线、开合状态或尺度漂移" : "prevent part count, axis, open/closed state, or scale drift");
     controlLayers.push("transition_motion_language");
   }
   if (hasAny(text, [/包装|标签|瓶身|盒|文字|logo|label|package|packaging|bottle|box|text/i])) {
     roleSignals.push("packaging_or_label_item");
+    hasProductOrPropEvidence = true;
     stableInvariants.push("package_shape_label_zone");
     riskControls.push(zh ? "未授权 Logo 和文字默认移除或替换为无品牌区域，不生成镜像文字" : "remove or neutralize unauthorized logos/text by default; prevent mirrored text");
     controlLayers.push("risk_control");
@@ -262,8 +277,10 @@ function deriveProductSceneControlBrief(visualBrief, language) {
     "surface_interaction_plate",
     "ui_free_scene_reconstruction",
     ...(hasHuman ? ["clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack"] : []),
-    "prop_cutout",
-    "wardrobe_detail",
+    ...(hasProductOrPropEvidence ? ["prop_cutout"] : []),
+    ...(hasMaterialOrDetailEvidence ? ["product_material_detail"] : []),
+    ...(hasWornOrWardrobeEvidence ? ["wardrobe_detail"] : []),
+    ...(hasHuman && hasWornOrWardrobeEvidence ? ["character_turnaround"] : []),
     "transition_reference",
     "negative_control"
   ];
@@ -396,6 +413,17 @@ function roleAcceptance(role, zh) {
           "Must not be merely an upper-body crop, face crop, or low-information screenshot.",
           "Plain or macro background, crisp details, no unsourced logos."
         ],
+    product_material_detail: zh
+      ? [
+          "必须展示当前商品自身的材质、结构、纹理、边缘、透明度、反光、流动状态、压缩变化、屏幕/标签区域或机械状态。",
+          "不得生成无关服装、包、鞋、手套、人物造型或泛化电商套图。",
+          "必须由 product_scene_control_brief 中的 material_detail_claims、stable_invariants 和 risk_controls 约束。"
+        ]
+      : [
+          "Must show the current product's material, construction, texture, edge, transparency, reflection, flow state, compression change, screen/label zone, or mechanical state.",
+          "Do not generate unrelated wardrobe, bags, shoes, gloves, character styling, or generic ecommerce sets.",
+          "Must be constrained by material_detail_claims, stable_invariants, and risk_controls in product_scene_control_brief."
+        ],
     prop_cutout: zh
       ? [
           "物体必须完整入画，纯白/浅灰或透明准备背景，足够留白。",
@@ -445,6 +473,12 @@ function addTargetContract(target, zh) {
   };
 }
 
+function targetAllowed(target, productSceneControlBrief, hasVisualBrief) {
+  if (!hasVisualBrief) return true;
+  const required = new Set(productSceneControlBrief?.required_asset_roles || []);
+  return required.has(target.role);
+}
+
 function buildTargets(frames, language, options = {}) {
   const evidence = evidenceLine(pickFrames(frames, 5));
   const zh = language === "zh";
@@ -452,6 +486,16 @@ function buildTargets(frames, language, options = {}) {
   const hasVisualBrief = Boolean(visualBrief);
   const hasHumanSubject = detectHumanSubject(visualBrief);
   const productSceneControlBrief = options.productSceneControlBrief || deriveProductSceneControlBrief(visualBrief, language);
+  const productControlSummary = productSceneControlBrief
+    ? [
+        `product_role=${(productSceneControlBrief.product_role || []).join(", ") || "unknown"}`,
+        `action_dependencies=${(productSceneControlBrief.action_dependencies || []).join(", ") || "unknown"}`,
+        `interaction_surfaces=${(productSceneControlBrief.interaction_surfaces || []).join(", ") || "unknown"}`,
+        `material_detail_claims=${(productSceneControlBrief.material_detail_claims || []).join(", ") || "unknown"}`,
+        `stable_invariants=${(productSceneControlBrief.stable_invariants || []).join(", ") || "unknown"}`,
+        `risk_controls=${(productSceneControlBrief.risk_controls || []).join("; ") || "unknown"}`
+      ].join("; ")
+    : "";
   const grounding = hasVisualBrief
     ? (zh
       ? `已核验视觉事实：${visualBrief} 商品场景控制 brief：${productSceneControlBrief.summary}`
@@ -539,6 +583,17 @@ function buildTargets(frames, language, options = {}) {
         : `Generate wardrobe and accessory detail references from verified evidence in frames ${evidence}. Plain background, crisp edges, separated highlights for dark materials, no collapsed black blobs, no extra logos.`
     },
     {
+      id: "product-material-detail-001",
+      role: "product_material_detail",
+      title: zh ? "商品材质/结构/效果细节" : "Product material/detail control",
+      source_evidence: evidence,
+      ready_for_generation: hasVisualBrief,
+      provider_mode: requestMode,
+      prompt: zh
+        ? `生成当前任务商品的材质、结构或效果细节控制图，不能生成无关服装、包、鞋、手套或人物造型。证据帧：${evidence}。${grounding} 商品场景控制：${productControlSummary}。只表现当前商品的可见材质、边缘、比例、透明/反光、液体/粉末/泡沫/压缩/机械/屏幕/标签状态中被证据支持的部分；如果证据没有服装或配饰，不得生成服装套图。${commonCleanup} ${stabilityNegative}`
+        : `Generate a material, construction, or effect detail control image for the current task's product, not unrelated wardrobe, bags, shoes, gloves, or character styling. Evidence frames: ${evidence}. ${grounding} Product scene control: ${productControlSummary}. Show only evidence-supported product material, edges, scale, transparency/reflection, liquid/powder/foam/compression/mechanical/screen/label state. If wardrobe or accessories are not evidenced, do not generate a wardrobe set. ${commonCleanup} ${stabilityNegative}`
+    },
+    {
       id: "prop-cutout-001",
       role: "prop_cutout",
       title: zh ? "道具/包/鞋独立图" : "Prop cutout",
@@ -546,8 +601,8 @@ function buildTargets(frames, language, options = {}) {
       ready_for_generation: hasVisualBrief,
       provider_mode: requestMode,
       prompt: zh
-        ? `生成证据帧 ${evidence} 中重点道具、包、鞋或手持物的独立展示图。物体完整入画，纯白或浅灰背景，足够留白，比例真实，链条/带子/鞋底等结构不能漂浮或断裂。`
-        : `Generate an isolated prop, bag, shoe, or handheld-object asset from frames ${evidence}. Full object in frame, pure white or light gray background, generous padding, realistic proportions, no floating or broken straps/chains/soles.`
+        ? `生成证据帧 ${evidence} 中当前任务的重点商品、道具或手持物独立控制图。${grounding} 商品场景控制：${productControlSummary}。物体必须来自当前任务证据，完整入画，纯白或浅灰背景，足够留白，比例真实；不得生成无关包、鞋、服装配件、历史任务商品或泛化商品套图。`
+        : `Generate an isolated control image for the current task's hero product, prop, or handheld object from frames ${evidence}. ${grounding} Product scene control: ${productControlSummary}. The object must come from current-task evidence, fully in frame, pure white or light gray background, generous padding, realistic proportions; do not generate unrelated bags, shoes, wardrobe accessories, previous-task products, or generic product sets.`
     },
     {
       id: "pose-reference-001",
@@ -572,12 +627,14 @@ function buildTargets(frames, language, options = {}) {
         : `Generate a clean transition reference expressing radial blur, snap zoom, motion streak, or axial push-pull from frames ${evidence}. Avoid full black/white frames, no UI, preserve centered composition.`
     }
   ];
-  return targets.map((target) => addTargetContract(target, zh));
+  return targets
+    .filter((target) => targetAllowed(target, productSceneControlBrief, hasVisualBrief))
+    .map((target) => addTargetContract(target, zh));
 }
 
 function detectHumanSubject(text) {
   if (!text) return false;
-  return /模特|人物|女性|男性|女人|男人|女孩|男孩|真人|人像|手部|woman|man|female|male|model|person|people|subject|hand/i.test(text);
+  return /模特|人物|女性|男性|女人|男人|女孩|男孩|真人|人像|身体|全身|半身|woman|man|female|male|model|person|people|subject|body|full.?body|half.?body/i.test(text);
 }
 
 function humanSubjectTargets({ evidence, zh, grounding, hasVisualBrief, requestMode, modelNegative, enabled }) {

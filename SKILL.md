@@ -73,6 +73,7 @@ Default roles are:
 - `clean_model_pose_pack`: 3-5 clean source-grounded model pose/action references from the video timeline; final delivery must include individual pose images, not only a collage sheet.
 - `character_turnaround`: same designed character or user-authorized subject, front/side/back/three-quarter on plain light background.
 - `wardrobe_detail`: clothing/accessory material, silhouette, closures, texture, and layered details.
+- `product_material_detail`: current-task product material, structure, texture, transparency, reflection, compression, liquid/effect state, screen/label zone, or mechanical state; use for non-wardrobe product details instead of defaulting to fashion assets.
 - `prop_cutout`: bag, shoe, tool, furniture, handheld item, vehicle detail, or other isolated prop.
 - `background_plate`: reusable environment plate for later compositing or video generation.
 - `pose_reference_pack`: repeated poses matching key timeline moments, delivered as separate single images on pure background rather than only a collage.
@@ -80,7 +81,7 @@ Default roles are:
 - `negative_control`: examples and prompt negatives that prevent identity drift, mirrored text, floating props, brand logos, extra limbs, wrong aspect ratio, and low-information frames.
 
 Read `references/asset-taxonomy.md` when role choice matters or the user asks for a full asset pack.
-Read `references/product-scene-asset-framework.md` when the source is a commercial/product video, when the product scene is not obvious, or when the user expects natural-language input to drive targeted asset selection without manual parameters.
+Read `references/product-scene-asset-framework.md` when the source is a commercial/product video, when the product scene is not obvious, or when the user expects natural-language input to drive targeted asset selection without manual parameters. Do not generate roles outside the current task's `product_scene_control_brief.required_asset_roles`; unrelated fashion, wardrobe, character, or prop assets must be blocked before provider generation, not left for QA.
 Read `references/scene-stability-assets.md` when the user complains about unstable video recreation, generic image outputs, or asks for empty scene plates.
 Read `references/qa-delivery-contract.md` before deciding whether generated files can be placed in `final-assets/` or marked video-ready.
 

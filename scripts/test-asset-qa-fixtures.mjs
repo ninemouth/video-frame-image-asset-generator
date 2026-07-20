@@ -182,7 +182,8 @@ async function testThirdPartySuccessUpdatesManifest() {
     prompt: "fixture image",
     size: "1024x1024",
     quality: "auto",
-    ready_for_generation: true
+    ready_for_generation: true,
+    product_scene_control_brief: baseProductSceneControlBrief()
   })}\n`);
 
   const { server, baseUrl } = await startMockImageServer();
@@ -214,7 +215,8 @@ async function testThirdPartyFailureUpdatesManifest() {
     id,
     role: "clean_scene_plate",
     prompt: "fixture image",
-    ready_for_generation: true
+    ready_for_generation: true,
+    product_scene_control_brief: baseProductSceneControlBrief()
   })}\n`);
 
   const result = await runNode([
@@ -379,6 +381,12 @@ async function testPlannerCapturesSpecialControlLayers() {
 
   const manifest = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
   const brief = manifest.product_scene_control_brief;
+  const roles = new Set(manifest.prompt_targets.map((target) => target.role));
+  for (const disallowed of ["wardrobe_detail", "character_turnaround", "pose_reference_pack", "clean_model_plain_background"]) {
+    assert(!roles.has(disallowed), `special non-fashion product should not plan role: ${disallowed}`);
+  }
+  assert(roles.has("product_material_detail"), "special product should plan product_material_detail");
+  assert(roles.has("prop_cutout"), "special product should plan prop_cutout");
   for (const expected of [
     "liquid_powder_smoke_or_food_effect",
     "screen_content_or_reflection_dependency",
@@ -397,6 +405,65 @@ async function testPlannerCapturesSpecialControlLayers() {
   );
 }
 
+async function testRuntimeSkipsDisallowedRequestRoleBeforeProviderCall() {
+  const runDir = await createRun("runtime-disallowed-role");
+  const id = "disallowed-wardrobe";
+  await writeJson(path.join(runDir, "output", "asset-manifest.json"), baseManifest("runtime-disallowed-role-test", promptTarget(id, "wardrobe_detail")));
+  await writeFile(path.join(runDir, "output", "request-pack.jsonl"), `${JSON.stringify({
+    id,
+    role: "wardrobe_detail",
+    prompt: "make unrelated black fashion outfit",
+    ready_for_generation: true,
+    product_scene_control_brief: baseProductSceneControlBrief({
+      required_asset_roles: ["clean_scene_plate", "camera_angle_plate_set", "surface_interaction_plate", "ui_free_scene_reconstruction", "prop_cutout", "product_material_detail", "transition_reference", "negative_control"]
+    })
+  })}\n`);
+
+  const result = await runNode([
+    "scripts/third-party-image-runtime.mjs",
+    "--run-dir", runDir,
+    "--request-pack", path.join(runDir, "output", "request-pack.jsonl"),
+    "--base-url", "http://127.0.0.1:9",
+    "--model", "fixture-image-model"
+  ], { env: { VIDEO_IMAGE_PROVIDER_API_KEY: "fixture-key" } });
+
+  assert(result.status === 0, "disallowed role should be skipped without provider failure");
+  assert(
+    `${result.stdout}\n${result.stderr}`.includes("role_not_allowed_by_product_scene_control_brief"),
+    "disallowed role fixture did not report role gate"
+  );
+  const manifest = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
+  assert(manifest.generated_assets.length === 0, "disallowed role should not add generated assets");
+}
+
+async function testRuntimeSkipsLegacyRequestWithoutControlBrief() {
+  const runDir = await createRun("runtime-legacy-request");
+  const id = "legacy-request";
+  await writeJson(path.join(runDir, "output", "asset-manifest.json"), baseManifest("runtime-legacy-request-test", promptTarget(id, "clean_scene_plate")));
+  await writeFile(path.join(runDir, "output", "request-pack.jsonl"), `${JSON.stringify({
+    id,
+    role: "clean_scene_plate",
+    prompt: "legacy request without control brief",
+    ready_for_generation: true
+  })}\n`);
+
+  const result = await runNode([
+    "scripts/third-party-image-runtime.mjs",
+    "--run-dir", runDir,
+    "--request-pack", path.join(runDir, "output", "request-pack.jsonl"),
+    "--base-url", "http://127.0.0.1:9",
+    "--model", "fixture-image-model"
+  ], { env: { VIDEO_IMAGE_PROVIDER_API_KEY: "fixture-key" } });
+
+  assert(result.status === 0, "legacy request should be skipped without provider failure");
+  assert(
+    `${result.stdout}\n${result.stderr}`.includes("missing_product_scene_control_brief"),
+    "legacy request fixture did not report missing control brief"
+  );
+  const manifest = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
+  assert(manifest.generated_assets.length === 0, "legacy request should not add generated assets");
+}
+
 async function main() {
   const tests = [
     testFallbackCannotBeReady,
@@ -406,7 +473,9 @@ async function main() {
     testPlannerBlocksGenerationWithoutVisualBrief,
     testPlannerIncludesCleanModelTargetsWithHumanBrief,
     testValidatorRejectsBrokenProductSceneBrief,
-    testPlannerCapturesSpecialControlLayers
+    testPlannerCapturesSpecialControlLayers,
+    testRuntimeSkipsDisallowedRequestRoleBeforeProviderCall,
+    testRuntimeSkipsLegacyRequestWithoutControlBrief
   ];
 
   for (const test of tests) {

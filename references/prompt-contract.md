@@ -74,6 +74,8 @@ For isolated props:
 
 For wardrobe details, require material and construction evidence such as straps, closures, wrinkles, texture, edges, hardware, or layered garment structure. A face crop or low-information body crop does not satisfy `wardrobe_detail`.
 
+For non-wardrobe product details, use `product_material_detail` instead of `wardrobe_detail`. It must remain anchored to the current task's product_scene_control_brief and must not generate unrelated fashion outfits, bags, shoes, gloves, or historical-task products.
+
 ## Delivery Status
 
 Before delivery, classify every image with the status vocabulary in `qa-delivery-contract.md`: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`. Do not place uncertain fallback outputs into `final-assets/` without a manifest status that makes the limitation clear.

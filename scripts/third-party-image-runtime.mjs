@@ -55,6 +55,44 @@ function qaStatusForProviderResult(result) {
   return "pending_visual_review";
 }
 
+function generationGateForRequest(request, args) {
+  if (request.ready_for_generation === false && !args["allow-draft"]) {
+    return {
+      allowed: false,
+      reason: "ready_for_generation_false",
+      next_action: "Fill visual_evidence_brief, rerun plan-image-assets, then generate."
+    };
+  }
+
+  const brief = request.product_scene_control_brief;
+  if (!brief && !args["allow-legacy-request"]) {
+    return {
+      allowed: false,
+      reason: "missing_product_scene_control_brief",
+      next_action: "Rerun plan-image-assets with the current skill so every request carries product_scene_control_brief."
+    };
+  }
+
+  if (brief?.generation_allowed === false && !args["allow-draft"]) {
+    return {
+      allowed: false,
+      reason: "product_scene_control_brief_blocked",
+      next_action: "Fill visual_evidence_brief and rerun planning before provider generation."
+    };
+  }
+
+  const allowedRoles = new Set(Array.isArray(brief?.required_asset_roles) ? brief.required_asset_roles : []);
+  if (brief && request.role && !allowedRoles.has(request.role)) {
+    return {
+      allowed: false,
+      reason: "role_not_allowed_by_product_scene_control_brief",
+      next_action: `Do not generate ${request.role} for this task; rerun planning if the visual evidence actually requires it.`
+    };
+  }
+
+  return { allowed: true };
+}
+
 function safeName(value) {
   return String(value || "image")
     .toLowerCase()
@@ -239,12 +277,14 @@ async function main() {
   const requests = await loadRequests(args);
   const results = [];
   for (const request of requests) {
-    if (request.ready_for_generation === false && !args["allow-draft"]) {
+    const gate = generationGateForRequest(request, args);
+    if (!gate.allowed) {
       const skipped = {
         id: request.id,
         status: "skipped",
-        reason: "ready_for_generation_false",
-        next_action: "Fill visual_evidence_brief, rerun plan-image-assets, then generate."
+        reason: gate.reason,
+        role: request.role || null,
+        next_action: gate.next_action
       };
       results.push(skipped);
       console.log(JSON.stringify(skipped));

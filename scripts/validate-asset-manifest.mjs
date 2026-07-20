@@ -383,6 +383,10 @@ async function main() {
     if (manifest.product_scene_control_brief?.generation_allowed === false && target.ready_for_generation === true) {
       errors.push(`prompt target ${target.id || "<unknown>"} is ready_for_generation while product_scene_control_brief is blocked`);
     }
+    const allowedRoles = new Set(arrayField(manifest.product_scene_control_brief, "required_asset_roles"));
+    if (manifest.product_scene_control_brief?.generation_allowed === true && target.role && !allowedRoles.has(target.role)) {
+      errors.push(`prompt target ${target.id || "<unknown>"} role ${target.role} is not allowed by product_scene_control_brief.required_asset_roles`);
+    }
   }
 
   for (const asset of generatedAssets) {
