@@ -17,6 +17,7 @@
     "validate:manifest": "node scripts/validate-asset-manifest.mjs",
     "validate:manifest:images": "node scripts/validate-asset-manifest.mjs --inspect-images",
     "validate:manifest:report": "node scripts/validate-asset-manifest.mjs --inspect-images --write-report",
+    "test:asset-qa-fixtures": "node scripts/test-asset-qa-fixtures.mjs",
     "sync": "node scripts/sync-to-codex-skill.mjs --source .",
     "verify": "node scripts/verify-skill.mjs"
   },

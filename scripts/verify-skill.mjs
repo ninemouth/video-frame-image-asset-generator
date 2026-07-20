@@ -24,6 +24,7 @@ const requiredFiles = [
   "scripts/resolve-image-provider.mjs",
   "scripts/third-party-image-runtime.mjs",
   "scripts/validate-asset-manifest.mjs",
+  "scripts/test-asset-qa-fixtures.mjs",
   "scripts/sync-to-codex-skill.mjs"
 ];
 
@@ -103,9 +104,20 @@ async function main() {
   if (!pkg.scripts?.["validate:manifest:report"]) {
     fail("package.json missing validate:manifest:report script");
   }
+  if (pkg.scripts?.["test:asset-qa-fixtures"] !== "node scripts/test-asset-qa-fixtures.mjs") {
+    fail("package.json missing test:asset-qa-fixtures script");
+  }
 
   for (const file of requiredFiles.filter((file) => file.endsWith(".mjs"))) {
     checkSyntax(file);
+  }
+
+  const fixtureResult = spawnSync(process.execPath, ["scripts/test-asset-qa-fixtures.mjs"], {
+    cwd: root,
+    encoding: "utf8"
+  });
+  if (fixtureResult.status !== 0) {
+    fail(`asset QA fixtures failed\n${fixtureResult.stderr || fixtureResult.stdout}`);
   }
 
   console.log(JSON.stringify({
