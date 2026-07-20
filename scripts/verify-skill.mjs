@@ -49,7 +49,7 @@ async function main() {
   if (!skill.startsWith("---\nname: video-frame-image-asset-generator\n")) {
     fail("SKILL.md frontmatter name is invalid");
   }
-  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md", "qa-delivery-contract.md", "fallback_review_required"]) {
+  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md", "qa-delivery-contract.md", "fallback_review_required", "--inspect-images"]) {
     if (!skill.includes(term)) fail(`SKILL.md missing required term: ${term}`);
   }
 
@@ -82,6 +82,9 @@ async function main() {
   }
   if (!pkg.scripts?.["validate:manifest"]) {
     fail("package.json missing validate:manifest script");
+  }
+  if (!pkg.scripts?.["validate:manifest:images"]) {
+    fail("package.json missing validate:manifest:images script");
   }
 
   for (const file of requiredFiles.filter((file) => file.endsWith(".mjs"))) {

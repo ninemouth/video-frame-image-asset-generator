@@ -59,4 +59,6 @@ Run:
 node scripts/validate-asset-manifest.mjs --run-dir /abs/asset-run
 ```
 
+Use `--inspect-images` on final passes when the generated files are already present and you want lightweight heuristic QA for plain-background and pose-pack failures.
+
 Use `--require-final` only when the task must prove at least one image is ready for video-model input.

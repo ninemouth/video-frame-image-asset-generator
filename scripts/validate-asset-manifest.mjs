@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 const allowedFinalStatuses = new Set([
@@ -41,6 +42,10 @@ function sourceOf(asset) {
   return String(asset.source || asset.provider || asset.generation_source || "").toLowerCase();
 }
 
+function basenameOf(asset) {
+  return path.basename(String(asset.final_path || asset.output_path || asset.path || ""));
+}
+
 function isFallback(asset) {
   const source = sourceOf(asset);
   const status = statusOf(asset);
@@ -48,11 +53,116 @@ function isFallback(asset) {
     || /fallback/.test(String(status).toLowerCase());
 }
 
+function ffprobeDimensions(file) {
+  const result = spawnSync("ffprobe", [
+    "-v", "error",
+    "-select_streams", "v:0",
+    "-show_entries", "stream=width,height",
+    "-of", "json",
+    file
+  ], { encoding: "utf8" });
+
+  if (result.status !== 0) return null;
+  try {
+    const payload = JSON.parse(result.stdout || "{}");
+    const stream = payload.streams?.[0];
+    if (!stream?.width || !stream?.height) return null;
+    return { width: Number(stream.width), height: Number(stream.height) };
+  } catch {
+    return null;
+  }
+}
+
+function sampleRgbCrop(file, crop) {
+  const filter = `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},format=rgb24`;
+  const result = spawnSync("ffmpeg", [
+    "-v", "error",
+    "-i", file,
+    "-vf", filter,
+    "-f", "rawvideo",
+    "pipe:1"
+  ], { encoding: null, maxBuffer: 64 * 1024 * 1024 });
+
+  if (result.status !== 0 || !result.stdout) return null;
+  return Buffer.from(result.stdout);
+}
+
+function summarizeRgb(buffer) {
+  const pixelCount = Math.floor(buffer.length / 3);
+  if (!pixelCount) return null;
+  let white = 0;
+  let dark = 0;
+  let sum = 0;
+  for (let i = 0; i < pixelCount; i += 1) {
+    const base = i * 3;
+    const r = buffer[base];
+    const g = buffer[base + 1];
+    const b = buffer[base + 2];
+    const min = Math.min(r, g, b);
+    const max = Math.max(r, g, b);
+    const y = (r + g + b) / 3;
+    if (min >= 245) white += 1;
+    if (max <= 15) dark += 1;
+    sum += y;
+  }
+  return {
+    pixelCount,
+    whiteRatio: white / pixelCount,
+    darkRatio: dark / pixelCount,
+    meanLuma: sum / pixelCount
+  };
+}
+
+function inspectImage(file) {
+  const dims = ffprobeDimensions(file);
+  if (!dims) return null;
+  const edge = Math.max(1, Math.round(Math.min(dims.width, dims.height) * 0.08));
+  const center = {
+    x: Math.floor(dims.width * 0.25),
+    y: Math.floor(dims.height * 0.25),
+    width: Math.max(1, Math.floor(dims.width * 0.5)),
+    height: Math.max(1, Math.floor(dims.height * 0.5))
+  };
+  const crops = {
+    top: { x: 0, y: 0, width: dims.width, height: edge },
+    bottom: { x: 0, y: dims.height - edge, width: dims.width, height: edge },
+    left: { x: 0, y: 0, width: edge, height: dims.height },
+    right: { x: dims.width - edge, y: 0, width: edge, height: dims.height },
+    center
+  };
+
+  const stats = {};
+  for (const [key, crop] of Object.entries(crops)) {
+    const sample = sampleRgbCrop(file, crop);
+    if (!sample) return null;
+    stats[key] = summarizeRgb(sample);
+  }
+
+  const borderStats = [stats.top, stats.bottom, stats.left, stats.right].filter(Boolean);
+  const borderWhiteRatio = borderStats.reduce((sum, stat) => sum + stat.whiteRatio, 0) / borderStats.length;
+  const borderDarkRatio = borderStats.reduce((sum, stat) => sum + stat.darkRatio, 0) / borderStats.length;
+  const borderMeanLuma = borderStats.reduce((sum, stat) => sum + stat.meanLuma, 0) / borderStats.length;
+  const centerWhiteRatio = stats.center.whiteRatio;
+  const centerMeanLuma = stats.center.meanLuma;
+  const fullAspect = dims.width / dims.height;
+  return {
+    width: dims.width,
+    height: dims.height,
+    aspect: fullAspect,
+    borderWhiteRatio,
+    borderDarkRatio,
+    borderMeanLuma,
+    centerWhiteRatio,
+    centerMeanLuma
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const runDir = path.resolve(String(args["run-dir"] || process.cwd()));
   const manifestPath = path.resolve(String(args.manifest || path.join(runDir, "output", "asset-manifest.json")));
   const requireFinal = Boolean(args["require-final"]);
+  const inspectImages = Boolean(args["inspect-images"]);
 
   if (!existsSync(manifestPath)) fail("asset manifest not found", { manifestPath });
 
@@ -105,6 +215,54 @@ async function main() {
     const status = statusOf(asset);
     if (isFallback(asset) && status === "ready_for_video_model") {
       errors.push(`fallback asset ${id} cannot be ready_for_video_model`);
+    }
+
+    if (inspectImages && asset.final_path) {
+      const file = path.resolve(runDir, asset.final_path);
+      if (existsSync(file)) {
+        const metrics = inspectImage(file);
+        if (!metrics) {
+          warnings.push(`unable to inspect image metrics for ${id}`);
+          continue;
+        }
+
+        if (asset.role === "clean_model_plain_background") {
+          if (metrics.borderWhiteRatio < 0.55 || metrics.borderMeanLuma < 190) {
+            errors.push(`plain background asset ${id} does not look plain enough at the border`);
+          }
+          if (metrics.centerWhiteRatio > 0.96 && metrics.centerMeanLuma > 240) {
+            warnings.push(`plain background asset ${id} looks almost empty; confirm a visible subject remains`);
+          }
+        }
+
+        if (asset.role === "wardrobe_detail") {
+          if (metrics.borderWhiteRatio < 0.35 && metrics.borderMeanLuma < 150) {
+            warnings.push(`wardrobe detail asset ${id} may be too dark or too busy at the border`);
+          }
+        }
+
+        if (asset.role === "clean_model_pose_pack") {
+          if (metrics.width > metrics.height && metrics.borderWhiteRatio > 0.55) {
+            warnings.push(`pose pack asset ${id} looks collage-like; individual pose files should be delivered alongside it`);
+          }
+          const dir = path.dirname(file);
+          const base = basenameOf(asset).replace(/\.(png|jpe?g|webp)$/i, "");
+          const siblings = Array.from(new Set(
+            [".png", ".jpg", ".jpeg", ".webp"].flatMap((ext) => {
+              try {
+                return readdirSync(dir).filter((name) => name.startsWith(base) && name !== basenameOf(asset) && name.endsWith(ext));
+              } catch {
+                return [];
+              }
+            })
+          ));
+          if (!siblings.length && !/-(\d{2,}|left|right|front|back|side|three-quarter)$/i.test(base)) {
+            warnings.push(`pose pack asset ${id} has no obvious individual pose siblings next to it`);
+          }
+        }
+      } else {
+        warnings.push(`image file missing for ${id}: ${file}`);
+      }
     }
   }
 
