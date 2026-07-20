@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -32,6 +32,113 @@ function parseArgs(argv) {
 function fail(message, details = {}) {
   console.error(JSON.stringify({ ok: false, error: message, ...details }, null, 2));
   process.exit(1);
+}
+
+function statusCounts(assets) {
+  const counts = {};
+  for (const asset of assets) {
+    const status = statusOf(asset) || "missing_status";
+    counts[status] = (counts[status] || 0) + 1;
+  }
+  return counts;
+}
+
+function recommendationFor(message) {
+  if (/missing role acceptance|allowed_final_statuses/.test(message)) {
+    return "Rerun planning with the current skill so every prompt target carries role acceptance and final-status rules.";
+  }
+  if (/legacy status|unknown status/.test(message)) {
+    return "Map old QA labels to ready_for_video_model, reference_only, fallback_review_required, retry_required, or failed_role.";
+  }
+  if (/fallback asset/.test(message)) {
+    return "Move fallback crops/masks/reused images to fallback_review_required or reference_only before delivery.";
+  }
+  if (/plain background/.test(message)) {
+    return "Regenerate the plain-background model as a true white/light-gray background asset with no scene residue.";
+  }
+  if (/pose pack/.test(message)) {
+    return "Export individual pose images for each source action beat; keep any collage only as an overview sheet.";
+  }
+  if (/wardrobe detail/.test(message)) {
+    return "Regenerate wardrobe details as material/construction close-ups rather than face or body crops.";
+  }
+  if (/no generated asset is ready/.test(message)) {
+    return "Complete generation and visual QA before claiming the package has video-model-ready assets.";
+  }
+  return "Review this item before marking assets ready for video-model use.";
+}
+
+function unique(values) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function markdownList(items, emptyText) {
+  if (!items.length) return `- ${emptyText}`;
+  return items.map((item) => `- ${item}`).join("\n");
+}
+
+function buildMarkdownReport({ manifestPath, manifest, promptTargets, generatedAssets, errors, warnings, inspectImages, requireFinal }) {
+  const status = errors.length ? "failed" : warnings.length ? "passed_with_warnings" : "passed";
+  const recommendations = unique([...errors, ...warnings].map(recommendationFor));
+  const counts = statusCounts(generatedAssets);
+  const countLines = Object.keys(counts).length
+    ? Object.entries(counts).map(([key, value]) => `- \`${key}\`: ${value}`)
+    : ["- No generated assets recorded."];
+
+  return [
+    "# Asset Validation Report",
+    "",
+    `- Status: \`${status}\``,
+    `- Manifest: \`${manifestPath}\``,
+    `- Run id: \`${manifest.run_id || "unknown"}\``,
+    `- Prompt targets: ${promptTargets.length}`,
+    `- Generated assets: ${generatedAssets.length}`,
+    `- Image inspection: ${inspectImages ? "enabled" : "disabled"}`,
+    `- Require final: ${requireFinal ? "yes" : "no"}`,
+    "",
+    "## Blocking Issues",
+    "",
+    markdownList(errors, "None"),
+    "",
+    "## Warnings",
+    "",
+    markdownList(warnings, "None"),
+    "",
+    "## Delivery Status Counts",
+    "",
+    countLines.join("\n"),
+    "",
+    "## Recommended Next Actions",
+    "",
+    markdownList(recommendations, "No action needed beyond final visual review."),
+    "",
+    "## Status Vocabulary",
+    "",
+    "- `ready_for_video_model`: passed role-specific visual QA and can be used as video-model input.",
+    "- `reference_only`: useful for human review but not strong enough as a control asset.",
+    "- `fallback_review_required`: crop, mask, reused image, or provider-blocked substitute that needs review.",
+    "- `retry_required`: generation or role fulfillment should be retried.",
+    "- `failed_role`: image content does not match its declared role.",
+    ""
+  ].join("\n");
+}
+
+async function writeReportIfRequested({ args, runDir, manifestPath, manifest, promptTargets, generatedAssets, errors, warnings, inspectImages, requireFinal }) {
+  if (!args["write-report"] && !args.report) return null;
+  const reportPath = path.resolve(String(args.report || path.join(runDir, "qa", "asset-validation-report.md")));
+  await mkdir(path.dirname(reportPath), { recursive: true });
+  const markdown = buildMarkdownReport({
+    manifestPath,
+    manifest,
+    promptTargets,
+    generatedAssets,
+    errors,
+    warnings,
+    inspectImages,
+    requireFinal
+  });
+  await writeFile(reportPath, markdown);
+  return reportPath;
 }
 
 function statusOf(asset) {
@@ -279,11 +386,25 @@ async function main() {
     if (!finals.length) errors.push("--require-final was set but no generated asset is ready_for_video_model");
   }
 
-  if (errors.length) fail("asset manifest validation failed", { manifestPath, errors, warnings });
+  const reportPath = await writeReportIfRequested({
+    args,
+    runDir,
+    manifestPath,
+    manifest,
+    promptTargets,
+    generatedAssets,
+    errors,
+    warnings,
+    inspectImages,
+    requireFinal
+  });
+
+  if (errors.length) fail("asset manifest validation failed", { manifestPath, reportPath, errors, warnings });
 
   console.log(JSON.stringify({
     ok: true,
     manifestPath,
+    reportPath,
     prompt_targets: promptTargets.length,
     generated_assets: generatedAssets.length,
     warnings

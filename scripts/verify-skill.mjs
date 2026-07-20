@@ -59,7 +59,7 @@ async function main() {
   }
 
   const manifestValidator = await readFile(path.join(root, "scripts", "validate-asset-manifest.mjs"), "utf8");
-  for (const term of ["allowedFinalStatuses", "ready_for_video_model", "fallback_review_required", "failed_role", "acceptance"]) {
+  for (const term of ["allowedFinalStatuses", "ready_for_video_model", "fallback_review_required", "failed_role", "acceptance", "asset-validation-report.md", "Recommended Next Actions"]) {
     if (!manifestValidator.includes(term)) fail(`validate-asset-manifest.mjs missing required term: ${term}`);
   }
 
@@ -85,6 +85,9 @@ async function main() {
   }
   if (!pkg.scripts?.["validate:manifest:images"]) {
     fail("package.json missing validate:manifest:images script");
+  }
+  if (!pkg.scripts?.["validate:manifest:report"]) {
+    fail("package.json missing validate:manifest:report script");
   }
 
   for (const file of requiredFiles.filter((file) => file.endsWith(".mjs"))) {

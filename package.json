@@ -15,6 +15,7 @@
     "third-party:generate": "node scripts/third-party-image-runtime.mjs",
     "validate:manifest": "node scripts/validate-asset-manifest.mjs",
     "validate:manifest:images": "node scripts/validate-asset-manifest.mjs --inspect-images",
+    "validate:manifest:report": "node scripts/validate-asset-manifest.mjs --inspect-images --write-report",
     "sync": "node scripts/sync-to-codex-skill.mjs --source .",
     "verify": "node scripts/verify-skill.mjs"
   },

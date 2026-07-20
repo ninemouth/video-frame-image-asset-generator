@@ -55,7 +55,7 @@ Keep the two responsibilities separate:
    - Update `output/asset-manifest.json` with final paths, provider, prompt id, source evidence, and QA status.
    - Use role-level delivery statuses: `ready_for_video_model`, `reference_only`, `fallback_review_required`, `retry_required`, or `failed_role`.
    - Local crops, masked frames, reused older generations, and provider-blocked substitutes are useful references, but they must be marked `fallback_review_required` or `reference_only`; never mark them `ready_for_video_model`.
-   - Run `scripts/validate-asset-manifest.mjs` before delivery when an asset manifest exists; use `--inspect-images` on final passes when the generated files are available locally.
+   - Run `scripts/validate-asset-manifest.mjs` before delivery when an asset manifest exists; use `--inspect-images` on final passes when the generated files are available locally, and `--write-report` when handing results to a user or operator.
    - Provide direct-access output files; do not make the user hunt through internal work folders.
 
 ## Asset Roles
