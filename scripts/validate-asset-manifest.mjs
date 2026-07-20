@@ -145,6 +145,77 @@ function statusOf(asset) {
   return asset.delivery_status || asset.final_status || asset.qa_status || asset.status || "";
 }
 
+function arrayField(value, key) {
+  return Array.isArray(value?.[key]) ? value[key] : [];
+}
+
+function validateProductSceneControlBrief(brief) {
+  const errors = [];
+  const warnings = [];
+  if (!brief || typeof brief !== "object") {
+    errors.push("manifest missing product_scene_control_brief");
+    return { errors, warnings };
+  }
+
+  const requiredArrays = [
+    "product_role",
+    "action_dependencies",
+    "scene_dependencies",
+    "interaction_surfaces",
+    "material_detail_claims",
+    "stable_invariants",
+    "isolation_targets",
+    "removal_targets",
+    "risk_controls",
+    "control_layers",
+    "required_asset_roles",
+    "do_not_generate"
+  ];
+
+  for (const key of requiredArrays) {
+    if (!Array.isArray(brief[key]) || !brief[key].length) {
+      errors.push(`product_scene_control_brief.${key} must be a non-empty array`);
+    }
+  }
+
+  if (!brief.status) errors.push("product_scene_control_brief.status is required");
+  if (typeof brief.generation_allowed !== "boolean") errors.push("product_scene_control_brief.generation_allowed must be boolean");
+  if (!brief.evidence_completeness) errors.push("product_scene_control_brief.evidence_completeness is required");
+  if (!brief.summary) warnings.push("product_scene_control_brief.summary is missing");
+
+  if (brief.status === "blocked_requires_visual_evidence_brief" && brief.generation_allowed !== false) {
+    errors.push("blocked product_scene_control_brief must set generation_allowed=false");
+  }
+  if (brief.generation_allowed === false && !arrayField(brief, "required_asset_roles").includes("request_pack_only")) {
+    errors.push("blocked product_scene_control_brief must include request_pack_only in required_asset_roles");
+  }
+
+  const requiredRoles = arrayField(brief, "required_asset_roles");
+  for (const role of ["clean_scene_plate", "camera_angle_plate_set", "surface_interaction_plate", "ui_free_scene_reconstruction", "negative_control"]) {
+    if (brief.generation_allowed && !requiredRoles.includes(role)) {
+      warnings.push(`product_scene_control_brief.required_asset_roles does not include ${role}`);
+    }
+  }
+
+  const hasModelRole = requiredRoles.some((role) => ["clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack"].includes(role));
+  const explicitlyModelDriven = [
+    ...arrayField(brief, "product_role"),
+    ...arrayField(brief, "isolation_targets"),
+    ...arrayField(brief, "stable_invariants")
+  ].some((value) => /model|person|human|body(?!_or_hand)|clean_model/i.test(String(value)));
+  if (explicitlyModelDriven && !hasModelRole) {
+    errors.push("product_scene_control_brief is model/body driven but missing clean model asset roles");
+  }
+
+  const hasHandOrBodyAction = arrayField(brief, "action_dependencies")
+    .some((value) => /hand|body|person/i.test(String(value)));
+  if (hasHandOrBodyAction && !requiredRoles.includes("surface_interaction_plate")) {
+    errors.push("product_scene_control_brief has hand/body action but missing surface_interaction_plate role");
+  }
+
+  return { errors, warnings };
+}
+
 function sourceOf(asset) {
   return String(asset.source || asset.provider || asset.generation_source || "").toLowerCase();
 }
@@ -296,6 +367,10 @@ async function main() {
     errors.push("manifest.prompt_targets must not be empty");
   }
 
+  const briefResult = validateProductSceneControlBrief(manifest.product_scene_control_brief);
+  errors.push(...briefResult.errors);
+  warnings.push(...briefResult.warnings);
+
   for (const target of promptTargets) {
     if (!target.id) errors.push("prompt target missing id");
     if (!target.role) errors.push(`prompt target ${target.id || "<unknown>"} missing role`);
@@ -304,6 +379,9 @@ async function main() {
     }
     if (!Array.isArray(target.allowed_final_statuses)) {
       errors.push(`prompt target ${target.id || "<unknown>"} missing allowed_final_statuses`);
+    }
+    if (manifest.product_scene_control_brief?.generation_allowed === false && target.ready_for_generation === true) {
+      errors.push(`prompt target ${target.id || "<unknown>"} is ready_for_generation while product_scene_control_brief is blocked`);
     }
   }
 

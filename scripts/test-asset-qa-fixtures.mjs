@@ -43,8 +43,40 @@ function baseManifest(runId, promptTarget) {
   return {
     schema: "video-frame-image-asset-generator/asset-manifest/v1",
     run_id: runId,
+    product_scene_control_brief: baseProductSceneControlBrief(),
     prompt_targets: [promptTarget],
     generated_assets: []
+  };
+}
+
+function baseProductSceneControlBrief(overrides = {}) {
+  return {
+    status: "derived_from_visual_evidence_brief",
+    product_role: ["hero_product_or_prop"],
+    action_dependencies: ["person_or_hand_action"],
+    scene_dependencies: ["source_scene_and_contact_surface"],
+    interaction_surfaces: ["source_grounded_contact_zone"],
+    material_detail_claims: ["visible_material_or_construction_detail"],
+    stable_invariants: ["product_shape_scale_material", "scene_geometry_lighting_camera"],
+    isolation_targets: ["product_or_prop", "clean_scene_plate"],
+    removal_targets: ["platform UI", "captions", "watermarks"],
+    risk_controls: ["generic ecommerce studio packshot", "shape drift"],
+    control_layers: ["environment", "composition", "interaction_surface", "product_object_control", "risk_control"],
+    required_asset_roles: [
+      "clean_scene_plate",
+      "camera_angle_plate_set",
+      "surface_interaction_plate",
+      "ui_free_scene_reconstruction",
+      "prop_cutout",
+      "wardrobe_detail",
+      "transition_reference",
+      "negative_control"
+    ],
+    do_not_generate: ["generic ecommerce studio packshot", "arbitrary new scene"],
+    evidence_completeness: "sufficient_for_planning",
+    generation_allowed: true,
+    summary: "fixture product scene control brief",
+    ...overrides
   };
 }
 
@@ -305,6 +337,66 @@ async function testPlannerIncludesCleanModelTargetsWithHumanBrief() {
   );
 }
 
+async function testValidatorRejectsBrokenProductSceneBrief() {
+  const runDir = await createRun("broken-brief");
+  const manifest = baseManifest("broken-brief-test", {
+    ...promptTarget("broken"),
+    ready_for_generation: true
+  });
+  manifest.product_scene_control_brief = baseProductSceneControlBrief({
+    status: "blocked_requires_visual_evidence_brief",
+    generation_allowed: false,
+    required_asset_roles: ["request_pack_only"]
+  });
+  await writeJson(path.join(runDir, "output", "asset-manifest.json"), manifest);
+
+  const result = await runNode(["scripts/validate-asset-manifest.mjs", "--run-dir", runDir]);
+  assert(result.status !== 0, "blocked brief fixture should fail validation");
+  assert(
+    `${result.stdout}\n${result.stderr}`.includes("ready_for_generation while product_scene_control_brief is blocked"),
+    "blocked brief fixture did not report ready_for_generation conflict"
+  );
+}
+
+async function testPlannerCapturesSpecialControlLayers() {
+  const sourceRun = await createSourceRun("special-controls");
+  const runDir = await createRun("planner-special");
+  const visualBrief = path.join(runDir, "visual-brief.md");
+  await writeFile(visualBrief, [
+    "厨房台面商品视频，透明玻璃杯产品放在桌面上，手把液体倒入杯中，出现水流、泡沫和反光。",
+    "旁边有一个小屏幕显示状态变化，另一个镜头展示机械按键打开和前后效果对比。",
+    "必须保持台面、杯子比例、液体粘稠度、屏幕形状、机械轴线和同机位对比；去除平台 UI、字幕和未授权 Logo。"
+  ].join("\n"));
+
+  const result = await runNode([
+    "scripts/plan-image-assets.mjs",
+    "--run-dir", runDir,
+    "--source-run", sourceRun,
+    "--language", "zh",
+    "--visual-brief", visualBrief
+  ]);
+  assert(result.status === 0, `planner special fixture failed: ${result.stderr || result.stdout}`);
+
+  const manifest = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
+  const brief = manifest.product_scene_control_brief;
+  for (const expected of [
+    "liquid_powder_smoke_or_food_effect",
+    "screen_content_or_reflection_dependency",
+    "before_after_or_effect_comparison",
+    "mechanical_motion_or_state_change"
+  ]) {
+    assert(brief.action_dependencies.includes(expected), `special brief missing action dependency: ${expected}`);
+  }
+  assert(
+    brief.material_detail_claims.includes("transparent_or_reflective_material_detail"),
+    "special brief should capture transparent/reflective material detail"
+  );
+  assert(
+    brief.risk_controls.some((item) => String(item).includes("镜像文字")),
+    "special brief should include screen/text risk control"
+  );
+}
+
 async function main() {
   const tests = [
     testFallbackCannotBeReady,
@@ -312,7 +404,9 @@ async function main() {
     testThirdPartyFailureUpdatesManifest,
     testFinalAssetsOrganizerBuckets,
     testPlannerBlocksGenerationWithoutVisualBrief,
-    testPlannerIncludesCleanModelTargetsWithHumanBrief
+    testPlannerIncludesCleanModelTargetsWithHumanBrief,
+    testValidatorRejectsBrokenProductSceneBrief,
+    testPlannerCapturesSpecialControlLayers
   ];
 
   for (const test of tests) {

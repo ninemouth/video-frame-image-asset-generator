@@ -78,6 +78,53 @@ function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+function unique(values) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function visualEvidenceBriefTemplate(language) {
+  const zh = language === "zh";
+  return zh
+    ? [
+        "# Visual Evidence Brief Template",
+        "",
+        "在发送任何生图请求前，由 Codex 视觉检查关键帧后填写。不要让用户手动选择参数。",
+        "",
+        "- 画幅/机位/镜头：",
+        "- 稳定环境几何：",
+        "- 永久背景结构和相对位置：",
+        "- 商品/道具角色：hero object / worn item / held prop / body-contact item / surface-contact item / environment-scale item / consumable/effect item / packaging/label item / ambiguous",
+        "- 商品形状/比例/颜色/材质/放置：",
+        "- 人物是否出现；年龄段、发型类别、服装类别、身体裁切、姿态节点：",
+        "- 动作依赖：手、脸、身体姿态、躺/坐/站/走、倒/打开/按压/涂抹、前后对比、机械运动、屏幕显示、液体/粉末/烟雾/食物效果：",
+        "- 接触面：床、桌、地面、身体部位、手部、包装、产品表面或无：",
+        "- 材质/细节卖点：纹理、柔软、压缩、透明、反光、缝线、五金、屏幕、液体、效果变化：",
+        "- 需要隔离的对象：商品、模特、服装、材质、接触面、空场景、转场：",
+        "- 需要移除的元素：平台 UI、字幕、水印、未授权 Logo、临时杂物、黑白转场帧：",
+        "- 不能生成的风险：泛化棚拍、新场景、新模特身份、无来源道具、比例/材质/接触关系漂移：",
+        ""
+      ].join("\n")
+    : [
+        "# Visual Evidence Brief Template",
+        "",
+        "Fill this after Codex visually inspects keyframes and before sending any generation request. Do not require users to choose technical parameters.",
+        "",
+        "- Aspect/camera/lens:",
+        "- Stable environment geometry:",
+        "- Permanent background structures and relative positions:",
+        "- Product/prop role: hero object / worn item / held prop / body-contact item / surface-contact item / environment-scale item / consumable/effect item / packaging/label item / ambiguous",
+        "- Product shape/scale/color/material/placement:",
+        "- Human presence; age range, hairstyle category, clothing category, body crop, pose beats:",
+        "- Action dependencies: hands, face, body pose, lying/sitting/standing/walking, pouring/opening/pressing/applying, before-after, mechanical motion, screen display, liquid/powder/smoke/food effect:",
+        "- Contact surface: bed, table, floor, body part, hands, packaging, product surface, or none:",
+        "- Material/detail claims: texture, softness, compression, transparency, reflection, stitching, hardware, screen, liquid, effect change:",
+        "- Isolation targets: product, model, wardrobe, material, contact surface, empty scene, transition:",
+        "- Removal targets: platform UI, captions, watermarks, unauthorized logos, temporary clutter, black/white transition frames:",
+        "- Do-not-generate risks: generic studio shot, new scene, new model identity, unsourced props, shape/material/contact drift:",
+        ""
+      ].join("\n");
+}
+
 function deriveProductSceneControlBrief(visualBrief, language) {
   const zh = language === "zh";
   const text = String(visualBrief || "");
@@ -86,6 +133,14 @@ function deriveProductSceneControlBrief(visualBrief, language) {
   const actionDependencies = [];
   const sceneDependencies = [];
   const materialDetailClaims = [];
+  const interactionSurfaces = [];
+  const stableInvariants = [];
+  const isolationTargets = [];
+  const removalTargets = zh
+    ? ["平台 UI", "字幕", "水印", "未授权 Logo", "黑场/白场转场残影", "压缩噪点"]
+    : ["platform UI", "captions", "watermarks", "unauthorized logos", "black/white transition artifacts", "compression noise"];
+  const riskControls = [];
+  const controlLayers = [];
   const doNotGenerate = zh
     ? [
         "泛化电商棚拍图",
@@ -112,8 +167,15 @@ function deriveProductSceneControlBrief(visualBrief, language) {
       scene_dependencies: ["unknown_from_evidence"],
       interaction_surfaces: ["unknown_from_evidence"],
       material_detail_claims: ["unknown_from_evidence"],
+      stable_invariants: ["unknown_from_evidence"],
+      isolation_targets: ["unknown_from_evidence"],
+      removal_targets: removalTargets,
+      risk_controls: doNotGenerate,
+      control_layers: ["risk_control"],
       required_asset_roles: ["request_pack_only"],
       do_not_generate: doNotGenerate,
+      evidence_completeness: "blocked",
+      generation_allowed: false,
       summary: zh
         ? "缺少视觉证据 brief；必须先由 Codex 查看关键帧并定义商品角色、动作依赖、接触面、材质卖点和场景依赖。"
         : "Visual evidence brief is missing; Codex must inspect frames and define product role, action dependencies, contact surfaces, material claims, and scene dependencies first."
@@ -122,19 +184,75 @@ function deriveProductSceneControlBrief(visualBrief, language) {
 
   if (hasAny(text, [/商品|产品|枕头|服装|鞋|包|道具|物体|product|pillow|item|object|prop|bag|shoe|garment/i])) {
     roleSignals.push(zh ? "hero_product_or_prop" : "hero_product_or_prop");
+    isolationTargets.push("product_or_prop");
+    stableInvariants.push("product_shape_scale_material");
+    controlLayers.push("product_object_control");
   }
   if (hasAny(text, [/穿|佩戴|上身|服装|鞋|包|worn|wear|outfit|dress|shoe|bag/i])) {
     roleSignals.push("worn_or_styled_item");
+    isolationTargets.push("wardrobe_or_worn_item");
+    stableInvariants.push("fit_body_relationship");
+    controlLayers.push("wear_fit_control_on_body");
   }
   if (hasAny(text, [/躺|坐|站|走|触碰|使用|按压|整理|打开|倒|涂|手|lying|sitting|standing|walking|touch|press|use|open|pour|apply|hand/i])) {
     roleSignals.push("body_or_hand_interaction_product");
     actionDependencies.push("person_or_hand_action");
+    interactionSurfaces.push("body_or_hand_contact_zone");
+    isolationTargets.push("pose_or_action_reference");
+    stableInvariants.push("action_contact_relationship");
+    controlLayers.push("human_action");
   }
   if (hasAny(text, [/床|桌|地面|沙发|台面|枕|卧室|街道|房间|surface|bed|table|floor|sofa|desktop|bedroom|street|room/i])) {
     sceneDependencies.push("source_scene_and_contact_surface");
+    interactionSurfaces.push("source_grounded_contact_zone");
+    stableInvariants.push("scene_geometry_lighting_camera");
+    isolationTargets.push("clean_scene_plate");
+    controlLayers.push("environment");
+    controlLayers.push("interaction_surface");
   }
   if (hasAny(text, [/材质|面料|纹理|褶皱|光泽|柔软|压缩|透明|缝线|texture|fabric|material|wrinkle|gloss|soft|compression|transparent|stitch/i])) {
     materialDetailClaims.push("visible_material_or_construction_detail");
+    isolationTargets.push("material_detail");
+    stableInvariants.push("material_texture_color_edge");
+    controlLayers.push("material_detail");
+  }
+  if (hasAny(text, [/液体|水|油|粉末|烟雾|蒸汽|泡沫|食物|倒入|喷|liquid|water|oil|powder|smoke|steam|foam|food|pour|spray/i])) {
+    roleSignals.push("consumable_or_effect_item");
+    actionDependencies.push("liquid_powder_smoke_or_food_effect");
+    materialDetailClaims.push("effect_state_or_flow_detail");
+    interactionSurfaces.push("effect_contact_zone");
+    riskControls.push(zh ? "防止效果漂移、无来源溅射、错误粘稠度或错误接触阴影" : "prevent effect drift, unsourced splashes, wrong viscosity, or wrong contact shadows");
+    controlLayers.push("material_detail");
+  }
+  if (hasAny(text, [/屏幕|显示|界面|手机|电脑|电视|仪表|screen|display|phone|computer|tv|interface|dashboard/i])) {
+    roleSignals.push("screen_or_display_item");
+    actionDependencies.push("screen_content_or_reflection_dependency");
+    stableInvariants.push("screen_shape_perspective_reflection");
+    riskControls.push(zh ? "不得生成镜像文字、无来源 UI 或错误屏幕比例" : "prevent mirrored text, unsourced UI, or wrong screen aspect");
+    controlLayers.push("product_object_control");
+  }
+  if (hasAny(text, [/透明|玻璃|反光|金属|镜面|transparent|glass|reflective|metal|mirror/i])) {
+    materialDetailClaims.push("transparent_or_reflective_material_detail");
+    riskControls.push(zh ? "防止透明材质变浑浊、反射方向错误或边缘消失" : "prevent cloudy transparency, wrong reflection direction, or lost edges");
+    controlLayers.push("material_detail");
+  }
+  if (hasAny(text, [/前后|对比|之前|之后|变化|效果|before|after|comparison|result|change|effect/i])) {
+    actionDependencies.push("before_after_or_effect_comparison");
+    stableInvariants.push("before_after_camera_match");
+    riskControls.push(zh ? "前后对比必须保持同机位、同光线、同主体尺度" : "before-after comparison must keep camera, light, and subject scale matched");
+    controlLayers.push("risk_control");
+  }
+  if (hasAny(text, [/机械|旋转|折叠|开合|按键|轮子|motor|mechanical|rotate|fold|hinge|button|wheel/i])) {
+    actionDependencies.push("mechanical_motion_or_state_change");
+    stableInvariants.push("mechanical_parts_axis_and_state");
+    riskControls.push(zh ? "防止机械部件数量、轴线、开合状态或尺度漂移" : "prevent part count, axis, open/closed state, or scale drift");
+    controlLayers.push("transition_motion_language");
+  }
+  if (hasAny(text, [/包装|标签|瓶身|盒|文字|logo|label|package|packaging|bottle|box|text/i])) {
+    roleSignals.push("packaging_or_label_item");
+    stableInvariants.push("package_shape_label_zone");
+    riskControls.push(zh ? "未授权 Logo 和文字默认移除或替换为无品牌区域，不生成镜像文字" : "remove or neutralize unauthorized logos/text by default; prevent mirrored text");
+    controlLayers.push("risk_control");
   }
 
   const hasHuman = detectHumanSubject(text);
@@ -149,16 +267,29 @@ function deriveProductSceneControlBrief(visualBrief, language) {
     "transition_reference",
     "negative_control"
   ];
+  const completeness = [];
+  if (roleSignals.length) completeness.push("product_role");
+  if (sceneDependencies.length) completeness.push("scene_dependency");
+  if (interactionSurfaces.length) completeness.push("interaction_surface");
+  if (materialDetailClaims.length) completeness.push("material_detail");
+  if (actionDependencies.length) completeness.push("action_dependency");
 
   return {
     status: "derived_from_visual_evidence_brief",
-    product_role: roleSignals.length ? Array.from(new Set(roleSignals)) : ["source_defined_product_or_object"],
-    action_dependencies: actionDependencies.length ? Array.from(new Set(actionDependencies)) : ["no_specific_action_detected_from_brief"],
-    scene_dependencies: sceneDependencies.length ? Array.from(new Set(sceneDependencies)) : ["source_defined_environment"],
-    interaction_surfaces: sceneDependencies.length ? ["source_grounded_contact_zone"] : ["unknown_or_not_required_from_brief"],
-    material_detail_claims: materialDetailClaims.length ? Array.from(new Set(materialDetailClaims)) : ["not_explicit_in_brief"],
-    required_asset_roles: requiredAssetRoles,
+    product_role: roleSignals.length ? unique(roleSignals) : ["source_defined_product_or_object"],
+    action_dependencies: actionDependencies.length ? unique(actionDependencies) : ["no_specific_action_detected_from_brief"],
+    scene_dependencies: sceneDependencies.length ? unique(sceneDependencies) : ["source_defined_environment"],
+    interaction_surfaces: interactionSurfaces.length ? unique(interactionSurfaces) : ["unknown_or_not_required_from_brief"],
+    material_detail_claims: materialDetailClaims.length ? unique(materialDetailClaims) : ["not_explicit_in_brief"],
+    stable_invariants: stableInvariants.length ? unique(stableInvariants) : ["source_frame_composition"],
+    isolation_targets: isolationTargets.length ? unique(isolationTargets) : ["source_defined_subject_or_scene"],
+    removal_targets: removalTargets,
+    risk_controls: unique([...riskControls, ...doNotGenerate]),
+    control_layers: unique([...controlLayers, "composition", "risk_control"]),
+    required_asset_roles: unique(requiredAssetRoles),
     do_not_generate: doNotGenerate,
+    evidence_completeness: completeness.length >= 3 ? "sufficient_for_planning" : "partial_review_required",
+    generation_allowed: true,
     summary: zh
       ? `按证据 brief 采用控制层框架：商品角色=${roleSignals.join(", ") || "source_defined_product_or_object"}；动作依赖=${actionDependencies.join(", ") || "无明确动作"}；场景/接触依赖=${sceneDependencies.join(", ") || "源场景定义"}；材质细节=${materialDetailClaims.join(", ") || "未明确"}。`
       : `Use control-layer framework from evidence brief: product role=${roleSignals.join(", ") || "source_defined_product_or_object"}; action=${actionDependencies.join(", ") || "no specific action"}; scene/contact=${sceneDependencies.join(", ") || "source-defined scene"}; material=${materialDetailClaims.join(", ") || "not explicit"}.`
@@ -641,6 +772,7 @@ async function main() {
     `${JSON.stringify({
       schema: "video-frame-image-asset-generator/asset-qa-checklist/v1",
       run_id: plan.run_id,
+      product_scene_control_brief: productSceneControlBrief,
       final_statuses: {
         ready_for_video_model: "Generated or edited asset passed role-specific visual QA and can be used as a video-model reference.",
         reference_only: "Useful evidence or operator reference, but not strong enough to control video generation.",
@@ -651,6 +783,8 @@ async function main() {
       checks: [
         { id: "source_evidence_visually_inspected", status: "pending" },
         { id: "visual_evidence_brief_filled_before_provider_generation", status: visualBrief ? "passed" : "blocked" },
+        { id: "product_scene_control_brief_schema_complete", status: productSceneControlBrief.generation_allowed ? "passed" : "blocked" },
+        { id: "product_role_action_surface_material_risks_defined", status: productSceneControlBrief.evidence_completeness === "sufficient_for_planning" ? "passed" : "review_required" },
         { id: "scene_stability_plates_generated_before_character_product_assets", status: "pending" },
         { id: "ui_captions_watermarks_removed_unless_requested", status: "pending" },
         { id: "identity_policy_respected", status: "pending" },
@@ -665,6 +799,8 @@ async function main() {
       role_acceptance: Object.fromEntries(plan.targets.map((target) => [target.id, target.acceptance]))
     }, null, 2)}\n`
   );
+
+  await writeFile(path.join(runDir, "qa", "visual-evidence-brief-template.md"), visualEvidenceBriefTemplate(language));
 
   await writeFile(
     path.join(runDir, "output", "README.md"),
@@ -684,6 +820,7 @@ async function main() {
       "- `output/request-pack.jsonl`",
       "- `planning/asset-generation-plan.json`",
       "- `qa/asset-qa-checklist.json`",
+      "- `qa/visual-evidence-brief-template.md`",
       "",
       "Delivery status contract:",
       "",

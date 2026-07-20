@@ -42,6 +42,11 @@ Choose assets by dependency, not by product category:
 - If the video contains platform UI or overlaid text, include a UI-free reconstruction to keep the original composition while removing the overlay.
 - If the source has strong camera changes, create camera angle plates before product detail assets.
 - If source evidence is weak, generate request packs and QA checklists first; do not send generic prompts to the provider.
+- If the product uses liquid, powder, smoke, steam, foam, food, spray, or other changing states, define the effect contact zone, flow direction, viscosity/state, shadows, and before/after frame match. Do not let the provider invent splashes, vapor, or food textures not present in evidence.
+- If the product includes a screen, display, label, package, bottle, or box, define the physical screen/label zone separately from text content. Default to removing or neutralizing unauthorized UI/logo/text; prevent mirrored text and wrong screen aspect.
+- If the product is transparent, glass, reflective, metal, or mirror-like, define edge visibility, reflection direction, opacity, and background influence. Do not accept cloudy glass, lost edges, or random reflections.
+- If the video demonstrates mechanical motion, folding, hinges, rotating parts, buttons, wheels, or open/closed states, define part count, axis, state order, and scale before generation. Use transition/motion references only after the static states are controlled.
+- If the video relies on before/after effect comparison, define matched camera, light, subject scale, and surface state for both sides; do not compare two unrelated scenes.
 
 ## Example Reasoning Pattern
 

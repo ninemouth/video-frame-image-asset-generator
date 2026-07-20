@@ -57,17 +57,17 @@ async function main() {
   }
 
   const planner = await readFile(path.join(root, "scripts", "plan-image-assets.mjs"), "utf8");
-  for (const term of ["visual_evidence_brief", "product_scene_control_brief", "Product Scene Control Brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only", "ready_for_video_model", "fallback_review_required", "failed_role", "plain_background_must_be_plain"]) {
+  for (const term of ["visual_evidence_brief", "product_scene_control_brief", "visualEvidenceBriefTemplate", "stable_invariants", "risk_controls", "control_layers", "Product Scene Control Brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only", "ready_for_video_model", "fallback_review_required", "failed_role", "plain_background_must_be_plain"]) {
     if (!planner.includes(term)) fail(`plan-image-assets.mjs missing stability guard: ${term}`);
   }
 
   const productFramework = await readFile(path.join(root, "references", "product-scene-asset-framework.md"), "utf8");
-  for (const term of ["Product Scene Control Brief", "Product role in the video", "Control Layers", "Decision Rules", "contact surface", "material", "do-not-generate"]) {
+  for (const term of ["Product Scene Control Brief", "Product role in the video", "Control Layers", "Decision Rules", "contact surface", "material", "do-not-generate", "screen", "mechanical", "before/after", "liquid"]) {
     if (!productFramework.includes(term)) fail(`product-scene-asset-framework.md missing required term: ${term}`);
   }
 
   const manifestValidator = await readFile(path.join(root, "scripts", "validate-asset-manifest.mjs"), "utf8");
-  for (const term of ["allowedFinalStatuses", "ready_for_video_model", "fallback_review_required", "failed_role", "acceptance", "asset-validation-report.md", "Recommended Next Actions"]) {
+  for (const term of ["allowedFinalStatuses", "validateProductSceneControlBrief", "product_scene_control_brief", "generation_allowed", "stable_invariants", "ready_for_video_model", "fallback_review_required", "failed_role", "acceptance", "asset-validation-report.md", "Recommended Next Actions"]) {
     if (!manifestValidator.includes(term)) fail(`validate-asset-manifest.mjs missing required term: ${term}`);
   }
 
