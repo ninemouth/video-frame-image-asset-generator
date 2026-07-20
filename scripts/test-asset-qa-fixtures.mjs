@@ -260,6 +260,10 @@ async function testPlannerBlocksGenerationWithoutVisualBrief() {
   assert(requestPack.length > 0, "planner no-brief fixture did not write request pack");
   assert(requestPack.every((item) => item.ready_for_generation === false), "no-brief request pack should block provider generation");
   assert(requestPack.every((item) => item.provider_mode === "request_pack_only"), "no-brief request pack should use request_pack_only");
+  assert(
+    requestPack.every((item) => item.product_scene_control_brief?.status === "blocked_requires_visual_evidence_brief"),
+    "no-brief request pack should carry blocked product scene control brief"
+  );
 }
 
 async function testPlannerIncludesCleanModelTargetsWithHumanBrief() {
@@ -282,6 +286,15 @@ async function testPlannerIncludesCleanModelTargetsWithHumanBrief() {
   assert(result.status === 0, `planner human fixture failed: ${result.stderr || result.stdout}`);
 
   const manifest = JSON.parse(await readFile(path.join(runDir, "output", "asset-manifest.json"), "utf8"));
+  assert(manifest.product_scene_control_brief?.status === "derived_from_visual_evidence_brief", "manifest missing derived product scene control brief");
+  assert(
+    manifest.product_scene_control_brief.required_asset_roles.includes("surface_interaction_plate"),
+    "product scene control brief should require an interaction surface role"
+  );
+  assert(
+    manifest.product_scene_control_brief.required_asset_roles.includes("prop_cutout"),
+    "product scene control brief should require a product/object control role"
+  );
   const roles = new Set(manifest.prompt_targets.map((target) => target.role));
   for (const role of ["clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack"]) {
     assert(roles.has(role), `planner human fixture missing role: ${role}`);

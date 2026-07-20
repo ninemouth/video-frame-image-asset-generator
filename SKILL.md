@@ -25,7 +25,7 @@ Keep the two responsibilities separate:
      --source-run /abs/ffmpeg-run \
      --slug sg01-clean-assets
    ```
-3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, prop, environment, UI, or action facts. For video recreation, write a visual evidence brief before provider generation; read `references/scene-stability-assets.md` when the goal is stable empty scene plates. If a model/person appears in the source, the pack must include clean model references, not only empty scenes and product assets.
+3. Inspect the keyframes visually before final prompt writing. Scripts can index files and draft the matrix, but only Codex visual inspection should assert clothing, face, product, prop, environment, UI, or action facts. For video recreation, write a visual evidence brief before provider generation; read `references/product-scene-asset-framework.md` for commercial/product videos and derive a product scene control brief instead of relying on product-category presets. Read `references/scene-stability-assets.md` when the goal is stable empty scene plates. If a model/person appears in the source, the pack must include clean model references, not only empty scenes and product assets.
 4. Plan the target asset matrix:
    ```bash
    node ${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator/scripts/plan-image-assets.mjs \
@@ -80,6 +80,7 @@ Default roles are:
 - `negative_control`: examples and prompt negatives that prevent identity drift, mirrored text, floating props, brand logos, extra limbs, wrong aspect ratio, and low-information frames.
 
 Read `references/asset-taxonomy.md` when role choice matters or the user asks for a full asset pack.
+Read `references/product-scene-asset-framework.md` when the source is a commercial/product video, when the product scene is not obvious, or when the user expects natural-language input to drive targeted asset selection without manual parameters.
 Read `references/scene-stability-assets.md` when the user complains about unstable video recreation, generic image outputs, or asks for empty scene plates.
 Read `references/qa-delivery-contract.md` before deciding whether generated files can be placed in `final-assets/` or marked video-ready.
 
@@ -89,6 +90,7 @@ Write every prompt as a production brief, not a generic caption. Include:
 
 - Source evidence: frame ids/timestamps and what each frame proves.
 - Visual evidence brief: verified scene geometry, camera, light, persistent surfaces, transient elements to remove, and source-grounded placement zones.
+- Product scene control brief for commercial/product videos: product role, action dependencies, scene dependencies, interaction surfaces, material/detail claims, required asset roles, and do-not-generate list.
 - Target asset role and final use.
 - Subject/scene invariants: identity policy, clothing, props, environment, perspective, lighting, aspect ratio.
 - Required cleanup: remove UI overlays, watermarks, captions, brands, compression artifacts, black/white transition frames, and mirrored text unless explicitly requested.
@@ -132,6 +134,7 @@ Third-party runtime environment variables:
 - `scripts/sync-to-codex-skill.mjs`: sync a development copy into `${CODEX_HOME:-$HOME/.codex}/skills/video-frame-image-asset-generator`.
 - `references/frame-source-contract.md`: expected source inputs and frame-index mapping.
 - `references/asset-taxonomy.md`: asset role definitions and default shot matrix.
+- `references/product-scene-asset-framework.md`: evidence-driven framework for choosing assets across product scenes without enumerating every product category.
 - `references/scene-stability-assets.md`: stability-first scene plate rules for improving video recreation consistency.
 - `references/prompt-contract.md`: prompt schema, evidence locks, negatives, and QA rules.
 - `references/qa-delivery-contract.md`: hard role QA and final delivery status rules.

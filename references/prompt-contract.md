@@ -8,14 +8,15 @@ Write prompts in this order:
 
 1. **Source evidence:** frame ids, timestamps, and what each frame proves.
 2. **Visual evidence brief:** verified scene geometry, camera, light, persistent objects/surfaces, and transient removals.
-3. **Asset role:** one role from `asset-taxonomy.md`.
-4. **Primary request:** the exact deliverable to generate.
-5. **Invariants:** subject identity policy, outfit/product geometry, prop placement, camera perspective, aspect ratio, lighting, environment.
-6. **Cleanup:** remove UI, captions, watermarks, logos, compression artifacts, black/white transition frames, duplicate ghosting, and mirrored text unless requested.
-7. **Background:** scene plate, pure white, light gray, chroma key, transparent-ready, or original environment.
-8. **Camera and composition:** angle, lens feeling, crop, padding, safe zones.
-9. **Negative constraints:** concrete failure modes to avoid.
-10. **QA checks:** what the agent must inspect after generation.
+3. **Product scene control brief:** for commercial/product videos, state product role, action dependencies, contact surfaces, material/detail claims, scene dependencies, required asset roles, and do-not-generate list.
+4. **Asset role:** one role from `asset-taxonomy.md`.
+5. **Primary request:** the exact deliverable to generate.
+6. **Invariants:** subject identity policy, outfit/product geometry, prop placement, camera perspective, aspect ratio, lighting, environment.
+7. **Cleanup:** remove UI, captions, watermarks, logos, compression artifacts, black/white transition frames, duplicate ghosting, and mirrored text unless requested.
+8. **Background:** scene plate, pure white, light gray, chroma key, transparent-ready, or original environment.
+9. **Camera and composition:** angle, lens feeling, crop, padding, safe zones.
+10. **Negative constraints:** concrete failure modes to avoid.
+11. **QA checks:** what the agent must inspect after generation.
 
 ## Template
 
@@ -24,6 +25,7 @@ Use case: video-frame-recreation-asset
 Asset role: <role>
 Source evidence: <frame ids/timestamps and verified facts>
 Visual evidence brief: <scene geometry, camera, light, persistent surfaces, transient elements to remove>
+Product scene control brief: <product role, action dependencies, contact surface, material/detail claims, required asset roles, do-not-generate list>
 Primary request: <single image or sheet to generate>
 Subject/scene invariants: <what must remain consistent>
 Required cleanup: <what to remove>

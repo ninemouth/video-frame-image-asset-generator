@@ -25,6 +25,7 @@ Use this reference when choosing what image assets to generate from frame eviden
 
 - Preserve aspect ratio unless the user asks for a different generation target.
 - Prioritize scene stability plates before product, character, lifestyle, explainer, or detail assets.
+- For commercial/product videos, use `product-scene-asset-framework.md` to derive assets from the product's role, action dependencies, contact surfaces, material/detail claims, and scene dependencies instead of maintaining product-category presets.
 - Remove social UI, captions, creator watermarks, brand marks, mirrored text, and black/white transition artifacts by default.
 - Do not generate generic ecommerce/product/studio imagery when the source is a video scene. The output must stay anchored to visually inspected frame geometry.
 - If the source evidence contains a model/person, clean model assets are mandatory. Generate clean in-scene model reference, plain-background model reference, and model pose pack before prop/product cutouts.

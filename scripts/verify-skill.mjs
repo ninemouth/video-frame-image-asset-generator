@@ -13,6 +13,7 @@ const requiredFiles = [
   "package.json",
   "references/frame-source-contract.md",
   "references/asset-taxonomy.md",
+  "references/product-scene-asset-framework.md",
   "references/scene-stability-assets.md",
   "references/prompt-contract.md",
   "references/qa-delivery-contract.md",
@@ -51,13 +52,18 @@ async function main() {
   if (!skill.startsWith("---\nname: video-frame-image-asset-generator\n")) {
     fail("SKILL.md frontmatter name is invalid");
   }
-  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "scene-stability-assets.md", "qa-delivery-contract.md", "fallback_review_required", "--inspect-images"]) {
+  for (const term of ["native_codex", "third_party_api", "request_pack_only", "imagegen", "frame-index.json", "product-scene-asset-framework.md", "scene-stability-assets.md", "qa-delivery-contract.md", "fallback_review_required", "--inspect-images"]) {
     if (!skill.includes(term)) fail(`SKILL.md missing required term: ${term}`);
   }
 
   const planner = await readFile(path.join(root, "scripts", "plan-image-assets.mjs"), "utf8");
-  for (const term of ["visual_evidence_brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only", "ready_for_video_model", "fallback_review_required", "failed_role", "plain_background_must_be_plain"]) {
+  for (const term of ["visual_evidence_brief", "product_scene_control_brief", "Product Scene Control Brief", "ready_for_generation", "camera_angle_plate_set", "surface_interaction_plate", "clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack", "request_pack_only", "ready_for_video_model", "fallback_review_required", "failed_role", "plain_background_must_be_plain"]) {
     if (!planner.includes(term)) fail(`plan-image-assets.mjs missing stability guard: ${term}`);
+  }
+
+  const productFramework = await readFile(path.join(root, "references", "product-scene-asset-framework.md"), "utf8");
+  for (const term of ["Product Scene Control Brief", "Product role in the video", "Control Layers", "Decision Rules", "contact surface", "material", "do-not-generate"]) {
+    if (!productFramework.includes(term)) fail(`product-scene-asset-framework.md missing required term: ${term}`);
   }
 
   const manifestValidator = await readFile(path.join(root, "scripts", "validate-asset-manifest.mjs"), "utf8");

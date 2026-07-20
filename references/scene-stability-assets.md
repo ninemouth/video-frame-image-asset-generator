@@ -33,6 +33,8 @@ Before provider generation, write a compact visual evidence brief. It must name 
 - product/person placement zones, if later compositing needs them
 - whether a model/person appears, plus age range, hairstyle category, clothing category, body crop, pose beats, and interaction with scene/product
 
+For commercial/product videos, also derive the product scene control brief from `product-scene-asset-framework.md`. The brief should identify the product's role in the scene, contact surfaces, action dependencies, material/detail claims, and do-not-generate risks so the asset matrix stays targeted without requiring product-category presets.
+
 Example:
 
 ```text

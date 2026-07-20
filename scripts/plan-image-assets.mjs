@@ -74,6 +74,97 @@ function evidenceLine(frames) {
 
 const VIDEO_READY_STATUS = "planned_needs_generation";
 
+function hasAny(text, patterns) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function deriveProductSceneControlBrief(visualBrief, language) {
+  const zh = language === "zh";
+  const text = String(visualBrief || "");
+  const hasBrief = Boolean(text.trim());
+  const roleSignals = [];
+  const actionDependencies = [];
+  const sceneDependencies = [];
+  const materialDetailClaims = [];
+  const doNotGenerate = zh
+    ? [
+        "泛化电商棚拍图",
+        "任意新场景或新房间",
+        "无来源新模特身份",
+        "无来源新道具",
+        "平台 UI、字幕、水印或未授权 Logo",
+        "与源证据不一致的商品形状、比例、材质、接触关系或机位"
+      ]
+    : [
+        "generic ecommerce studio packshot",
+        "arbitrary new scene or room",
+        "unsourced new model identity",
+        "unsourced new props",
+        "platform UI, captions, watermarks, or unauthorized logos",
+        "product shape, scale, material, contact, or camera mismatch"
+      ];
+
+  if (!hasBrief) {
+    return {
+      status: "blocked_requires_visual_evidence_brief",
+      product_role: ["unknown_from_evidence"],
+      action_dependencies: ["unknown_from_evidence"],
+      scene_dependencies: ["unknown_from_evidence"],
+      interaction_surfaces: ["unknown_from_evidence"],
+      material_detail_claims: ["unknown_from_evidence"],
+      required_asset_roles: ["request_pack_only"],
+      do_not_generate: doNotGenerate,
+      summary: zh
+        ? "缺少视觉证据 brief；必须先由 Codex 查看关键帧并定义商品角色、动作依赖、接触面、材质卖点和场景依赖。"
+        : "Visual evidence brief is missing; Codex must inspect frames and define product role, action dependencies, contact surfaces, material claims, and scene dependencies first."
+    };
+  }
+
+  if (hasAny(text, [/商品|产品|枕头|服装|鞋|包|道具|物体|product|pillow|item|object|prop|bag|shoe|garment/i])) {
+    roleSignals.push(zh ? "hero_product_or_prop" : "hero_product_or_prop");
+  }
+  if (hasAny(text, [/穿|佩戴|上身|服装|鞋|包|worn|wear|outfit|dress|shoe|bag/i])) {
+    roleSignals.push("worn_or_styled_item");
+  }
+  if (hasAny(text, [/躺|坐|站|走|触碰|使用|按压|整理|打开|倒|涂|手|lying|sitting|standing|walking|touch|press|use|open|pour|apply|hand/i])) {
+    roleSignals.push("body_or_hand_interaction_product");
+    actionDependencies.push("person_or_hand_action");
+  }
+  if (hasAny(text, [/床|桌|地面|沙发|台面|枕|卧室|街道|房间|surface|bed|table|floor|sofa|desktop|bedroom|street|room/i])) {
+    sceneDependencies.push("source_scene_and_contact_surface");
+  }
+  if (hasAny(text, [/材质|面料|纹理|褶皱|光泽|柔软|压缩|透明|缝线|texture|fabric|material|wrinkle|gloss|soft|compression|transparent|stitch/i])) {
+    materialDetailClaims.push("visible_material_or_construction_detail");
+  }
+
+  const hasHuman = detectHumanSubject(text);
+  const requiredAssetRoles = [
+    "clean_scene_plate",
+    "camera_angle_plate_set",
+    "surface_interaction_plate",
+    "ui_free_scene_reconstruction",
+    ...(hasHuman ? ["clean_model_scene_reference", "clean_model_plain_background", "clean_model_pose_pack"] : []),
+    "prop_cutout",
+    "wardrobe_detail",
+    "transition_reference",
+    "negative_control"
+  ];
+
+  return {
+    status: "derived_from_visual_evidence_brief",
+    product_role: roleSignals.length ? Array.from(new Set(roleSignals)) : ["source_defined_product_or_object"],
+    action_dependencies: actionDependencies.length ? Array.from(new Set(actionDependencies)) : ["no_specific_action_detected_from_brief"],
+    scene_dependencies: sceneDependencies.length ? Array.from(new Set(sceneDependencies)) : ["source_defined_environment"],
+    interaction_surfaces: sceneDependencies.length ? ["source_grounded_contact_zone"] : ["unknown_or_not_required_from_brief"],
+    material_detail_claims: materialDetailClaims.length ? Array.from(new Set(materialDetailClaims)) : ["not_explicit_in_brief"],
+    required_asset_roles: requiredAssetRoles,
+    do_not_generate: doNotGenerate,
+    summary: zh
+      ? `按证据 brief 采用控制层框架：商品角色=${roleSignals.join(", ") || "source_defined_product_or_object"}；动作依赖=${actionDependencies.join(", ") || "无明确动作"}；场景/接触依赖=${sceneDependencies.join(", ") || "源场景定义"}；材质细节=${materialDetailClaims.join(", ") || "未明确"}。`
+      : `Use control-layer framework from evidence brief: product role=${roleSignals.join(", ") || "source_defined_product_or_object"}; action=${actionDependencies.join(", ") || "no specific action"}; scene/contact=${sceneDependencies.join(", ") || "source-defined scene"}; material=${materialDetailClaims.join(", ") || "not explicit"}.`
+  };
+}
+
 function roleAcceptance(role, zh) {
   const common = zh
     ? [
@@ -229,8 +320,11 @@ function buildTargets(frames, language, options = {}) {
   const visualBrief = String(options.visualBrief || "").trim();
   const hasVisualBrief = Boolean(visualBrief);
   const hasHumanSubject = detectHumanSubject(visualBrief);
+  const productSceneControlBrief = options.productSceneControlBrief || deriveProductSceneControlBrief(visualBrief, language);
   const grounding = hasVisualBrief
-    ? (zh ? `已核验视觉事实：${visualBrief}` : `Verified visual facts: ${visualBrief}`)
+    ? (zh
+      ? `已核验视觉事实：${visualBrief} 商品场景控制 brief：${productSceneControlBrief.summary}`
+      : `Verified visual facts: ${visualBrief} Product scene control brief: ${productSceneControlBrief.summary}`)
     : (zh
       ? "视觉事实待补充：执行生图前必须由 Codex 查看关键帧/截图并填写场景几何、主体、道具、光线、机位和遮挡关系。不要只凭 frame id 直接生成。"
       : "Visual facts required: before generation, Codex must inspect keyframes/screenshots and fill scene geometry, subject, props, lighting, camera angle, and occlusion relationships. Do not generate from frame ids alone.");
@@ -410,6 +504,21 @@ function promptPack(plan) {
     lines.push(`- ${frame.id}${frame.timestamp !== null ? ` @ ${frame.timestamp}s` : ""}${frame.relative_path ? `: \`${frame.relative_path}\`` : ""}`);
   }
 
+  if (plan.product_scene_control_brief) {
+    const brief = plan.product_scene_control_brief;
+    lines.push("", "## Product Scene Control Brief", "");
+    lines.push(`- Status: \`${brief.status}\``);
+    lines.push(`- Product role: ${brief.product_role.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push(`- Action dependencies: ${brief.action_dependencies.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push(`- Scene dependencies: ${brief.scene_dependencies.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push(`- Interaction surfaces: ${brief.interaction_surfaces.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push(`- Material/detail claims: ${brief.material_detail_claims.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push(`- Required asset roles: ${brief.required_asset_roles.map((item) => `\`${item}\``).join(", ")}`);
+    lines.push("");
+    lines.push("Do not generate:");
+    for (const item of brief.do_not_generate) lines.push(`- ${item}`);
+  }
+
   lines.push("", "## Prompt Targets", "");
   for (const target of plan.targets) {
     lines.push(`### ${target.id} - ${target.title}`, "");
@@ -450,6 +559,7 @@ async function main() {
     ? await readTextIfExists(visualBriefPath)
     : String(args["visual-summary"] || "");
   const frames = frameIndex ? normalizeFrameIndex(frameIndex, sourceRun) : [];
+  const productSceneControlBrief = deriveProductSceneControlBrief(visualBrief, language);
 
   const plan = {
     schema: "video-frame-image-asset-generator/asset-generation-plan/v1",
@@ -466,8 +576,9 @@ async function main() {
     frame_quality_summary: frameQuality?.summary || frameQuality?.stats || null,
     report_excerpt: report ? report.slice(0, 4000) : "",
     visual_evidence_brief: visualBrief || null,
+    product_scene_control_brief: productSceneControlBrief,
     generation_readiness: visualBrief ? "ready_after_prompt_review" : "draft_requires_visual_evidence_brief",
-    targets: buildTargets(frames, language, { visualBrief }),
+    targets: buildTargets(frames, language, { visualBrief, productSceneControlBrief }),
     execution_notes: [
       "Codex must visually inspect source frames before treating prompt details as final.",
       "Default strategy is video recreation stability: scene plates and camera anchors come before character, prop, or product shots.",
@@ -483,6 +594,7 @@ async function main() {
     created_at: plan.created_at,
     source_run: sourceRun,
     generated_assets: [],
+    product_scene_control_brief: productSceneControlBrief,
     prompt_targets: plan.targets.map((target) => ({
       id: target.id,
       role: target.role,
@@ -514,6 +626,7 @@ async function main() {
       provider_mode: target.provider_mode || "auto",
       ready_for_generation: target.ready_for_generation,
       requires_visual_evidence_brief: !target.ready_for_generation,
+      product_scene_control_brief: productSceneControlBrief,
       delivery_status: target.delivery_status,
       acceptance: target.acceptance
     }))
@@ -562,6 +675,7 @@ async function main() {
       sourceRun ? `- Source run: \`${sourceRun}\`` : "- Source run: not set",
       `- Planned targets: ${plan.targets.length}`,
       `- Generation readiness: \`${plan.generation_readiness}\``,
+      `- Product scene control status: \`${productSceneControlBrief.status}\``,
       "",
       "Direct files:",
       "",
