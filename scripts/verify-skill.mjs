@@ -63,8 +63,13 @@ async function main() {
     if (!manifestValidator.includes(term)) fail(`validate-asset-manifest.mjs missing required term: ${term}`);
   }
 
+  const thirdPartyRuntime = await readFile(path.join(root, "scripts", "third-party-image-runtime.mjs"), "utf8");
+  for (const term of ["updateAssetManifest", "pending_visual_review", "reference_only", "retry_required", "generated_assets", "prompt_targets", "--no-update-manifest"]) {
+    if (!thirdPartyRuntime.includes(term)) fail(`third-party-image-runtime.mjs missing manifest update behavior: ${term}`);
+  }
+
   const provider = await readFile(path.join(root, "references", "provider-routing.md"), "utf8");
-  for (const term of ["VIDEO_IMAGE_PROVIDER_API_KEY", "THINKAI_API_KEY", "CHARLIE_KEY", "/images/generations", "image-provider.json"]) {
+  for (const term of ["VIDEO_IMAGE_PROVIDER_API_KEY", "THINKAI_API_KEY", "CHARLIE_KEY", "/images/generations", "image-provider.json", "pending_visual_review"]) {
     if (!provider.includes(term)) fail(`provider routing missing required term: ${term}`);
   }
 

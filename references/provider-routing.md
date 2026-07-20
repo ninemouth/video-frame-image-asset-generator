@@ -70,3 +70,5 @@ Write provider diagnostics under `provider/`:
 - timestamp
 
 Keep raw HTTP failures in run diagnostics. User-facing summaries should say what is blocked and the smallest next step.
+
+The third-party runtime updates `output/asset-manifest.json` unless `--no-update-manifest` is supplied. Provider-generated files are added to `generated_assets` as `delivery_status: reference_only` and `qa_status: pending_visual_review`; visual QA must promote them before `ready_for_video_model`. Provider failures and skipped draft requests are recorded on their prompt targets so `validate-asset-manifest.mjs --write-report` can explain what to retry.

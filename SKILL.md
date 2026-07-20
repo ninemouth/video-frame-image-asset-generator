@@ -50,6 +50,7 @@ Keep the two responsibilities separate:
 - For `third_party_api`, use `scripts/third-party-image-runtime.mjs` for text-to-image prompts and request packs. Do not claim reference-image editing unless the configured provider is known to support that exact endpoint.
    - If `visual_evidence_brief` is missing, do not send request-pack entries to any image provider. Fill the visual facts first, then rerun planning.
    - For blocked or review-first work, deliver `output/prompt-pack.md` and `output/request-pack.jsonl`.
+   - The third-party runtime updates `output/asset-manifest.json` by default. Successful provider images are recorded as `reference_only` with `qa_status: pending_visual_review`; visual QA must promote them before `ready_for_video_model`.
 7. QA and deliver:
    - Save final images under the run-local `generated-assets/` or `final-assets/`.
    - Update `output/asset-manifest.json` with final paths, provider, prompt id, source evidence, and QA status.
